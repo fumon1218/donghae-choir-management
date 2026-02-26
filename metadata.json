@@ -1,0 +1,5 @@
+{
+  "name": "동해교회 찬양대 관리",
+  "description": "동해교회 찬양대 전용 관리 시스템 (인원, 출석, 찬송가, 스케줄 관리)",
+  "requestFramePermissions": []
+}

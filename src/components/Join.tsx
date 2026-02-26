@@ -1,28 +1,35 @@
 import { useState, FormEvent } from 'react';
 import { Part, Member } from '../data';
-import { Music, User, CheckCircle, ArrowRight } from 'lucide-react';
+import { Music, User, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Join() {
   const [name, setName] = useState('');
   const [part, setPart] = useState<Part>('Soprano');
   const [isJoined, setIsJoined] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parts: Part[] = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
-    const newMember: Member = {
-      id: `extra-${Date.now()}`,
-      name,
-      part,
-    };
+    setIsSubmitting(true);
 
-    const savedMembers = localStorage.getItem('choir_extra_members');
-    const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    localStorage.setItem('choir_extra_members', JSON.stringify([...extraMembers, newMember]));
-    
-    setIsJoined(true);
+    try {
+      await addDoc(collection(db, 'join_requests'), {
+        name,
+        part,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      setIsJoined(true);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      alert('가입 신청 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isJoined) {
@@ -36,8 +43,8 @@ export default function Join() {
           </div>
           <h2 className="text-3xl font-extrabold text-gray-900">가입 완료!</h2>
           <p className="mt-4 text-gray-600">
-            {name}님, 동해교회 찬양대원이 되신 것을 환영합니다.<br />
-            이제 지휘자님이 출석부에서 확인하실 수 있습니다.
+            {name}님, 동해교회 찬양대에 가입 신청이 접수되었습니다.<br />
+            지휘자님의 <b>승인 후</b> 정식 대원 명단에 추가됩니다.
           </p>
           <div className="mt-8">
             <button
@@ -57,9 +64,9 @@ export default function Join() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <img 
-            src="https://ais-pre-lmlcnppibbail3xnbi3fpl-88483622903.asia-east1.run.app/logo.png" 
-            alt="Dong-Hae Church Choir Logo" 
+          <img
+            src="https://ais-pre-lmlcnppibbail3xnbi3fpl-88483622903.asia-east1.run.app/logo.png"
+            alt="Dong-Hae Church Choir Logo"
             className="w-24 h-24 object-contain"
             onError={(e) => {
               // Fallback if image not found
@@ -110,8 +117,8 @@ export default function Join() {
                     onClick={() => setPart(p)}
                     className={`
                       py-3 px-4 text-sm font-medium rounded-xl border transition-all
-                      ${part === p 
-                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' 
+                      ${part === p
+                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm'
                         : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }
                     `}
@@ -125,9 +132,17 @@ export default function Join() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                disabled={isSubmitting}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                가입 신청하기
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    신청 중...
+                  </span>
+                ) : (
+                  '가입 신청하기'
+                )}
               </button>
             </div>
           </form>

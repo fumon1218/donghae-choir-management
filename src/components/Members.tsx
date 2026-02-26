@@ -1,12 +1,29 @@
 import { useState, useEffect } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle, Trash2 } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Members() {
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [showInviteToast, setShowInviteToast] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
+
+  // Load join requests from Firestore
+  useEffect(() => {
+    const q = query(collection(db, 'join_requests'), where('status', '==', 'pending'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const requests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setJoinRequests(requests);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Load members and handle permissions
   useEffect(() => {
@@ -91,6 +108,45 @@ export default function Members() {
     }
   };
 
+  const handleApprove = async (request: any) => {
+    try {
+      // 1. Update Firestore request status
+      const requestRef = doc(db, 'join_requests', request.id);
+      await updateDoc(requestRef, {
+        status: 'approved'
+      });
+
+      // 2. Add to local members (in a real app this would also be synced to a members collection in Firestore)
+      const newMember: Member = {
+        id: `extra-${Date.now()}`,
+        name: request.name,
+        part: request.part,
+      };
+
+      const savedMembers = localStorage.getItem('choir_extra_members');
+      const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
+      localStorage.setItem('choir_extra_members', JSON.stringify([...extraMembers, newMember]));
+
+      setAllMembers(prev => [...prev, newMember]);
+      alert(`${request.name} 대원의 가입이 승인되었습니다.`);
+    } catch (error) {
+      console.error('Error approving request:', error);
+      alert('승인 처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    if (window.confirm('이 가입 신청을 거절하시겠습니까?')) {
+      try {
+        await deleteDoc(doc(db, 'join_requests', requestId));
+        alert('가입 신청이 거절되었습니다.');
+      } catch (error) {
+        console.error('Error rejecting request:', error);
+        alert('처리 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
   const handleRoleChange = (memberId: string, newRole: string) => {
     const savedRoles = localStorage.getItem('choir_member_roles');
     const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
@@ -143,6 +199,46 @@ export default function Members() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {joinRequests.length > 0 && (
+          <div className="bg-blue-50/50 border-b border-blue-100 p-4">
+            <h2 className="text-sm font-semibold text-blue-900 flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-blue-600" />
+              가입 대기자 ({joinRequests.length}명)
+            </h2>
+            <div className="space-y-2">
+              {joinRequests.map(request => (
+                <div key={request.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                      {request.part.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{request.name}</p>
+                      <p className="text-xs text-gray-500">{request.part} 파트</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleReject(request.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                      title="거절"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleApprove(request)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      승인
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="border-b border-gray-200 overflow-x-auto">
           <nav className="flex -mb-px px-4" aria-label="Tabs">
             {parts.map((part) => (

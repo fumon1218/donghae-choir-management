@@ -69,6 +69,7 @@ export interface Hymn {
   week: number;
   title: string;
   composer: string;
+  scoreUrl?: string;
 }
 
 export const hymns: Hymn[] = [

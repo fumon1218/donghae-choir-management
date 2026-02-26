@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { hymns as initialHymns, Hymn } from '../data';
-import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 
 export default function Hymns() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
@@ -10,6 +10,8 @@ export default function Hymns() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editHymns, setEditHymns] = useState<Hymn[]>([]);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const currentMonthHymns = allHymns.filter(h => h.month === currentMonth);
 
@@ -38,7 +40,7 @@ export default function Hymns() {
       if (a.month !== b.month) return a.month - b.month;
       return a.week - b.week;
     });
-    
+
     setAllHymns(updatedHymns);
     localStorage.setItem('choir_hymns', JSON.stringify(updatedHymns));
     setIsEditing(false);
@@ -59,8 +61,86 @@ export default function Hymns() {
     setEditHymns(editHymns.filter((_, i) => i !== index));
   };
 
+  const handleImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('5MB 이하의 이미지만 업로드 가능합니다.');
+      return;
+    }
+
+    try {
+      setUploadingIndex(index);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // ImgBB API Key (using a test/demo key or require input later)
+      // Note: Ideally this should come from process.env, but for now we'll ask user or use a public one if possible
+      // Using a standard fetch to ImgBB
+      const VITE_IMGBB_API_KEY = typeof process !== 'undefined' && process.env && process.env.VITE_IMGBB_API_KEY ? process.env.VITE_IMGBB_API_KEY : (import.meta as any).env?.VITE_IMGBB_API_KEY || '';
+
+      if (!VITE_IMGBB_API_KEY) {
+        alert('ImgBB API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
+        setUploadingIndex(null);
+        return;
+      }
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${VITE_IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        handleUpdateHymn(index, 'scoreUrl', data.data.url);
+      } else {
+        throw new Error(data.error?.message || '업로드 실패');
+      }
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert('이미지 업로드에 실패했습니다.');
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
+
+  const ImageModal = () => {
+    if (!selectedImage) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 sm:p-6" onClick={() => setSelectedImage(null)}>
+        <div className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center bg-white rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="w-full h-full overflow-auto p-2 sm:p-4 bg-gray-50 flex items-center justify-center min-h-[50vh]">
+            <img
+              src={selectedImage}
+              alt="악보 확대 이미지"
+              className="max-w-full h-auto object-contain shadow-sm rounded-lg"
+              style={{ maxHeight: 'calc(90vh - 2rem)' }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      <ImageModal />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">월별 찬송가</h1>
         <div className="flex items-center gap-4">
@@ -163,6 +243,31 @@ export default function Hymns() {
                         placeholder="작곡가 입력"
                       />
                     </div>
+                    <div className="w-16 sm:w-20 lg:w-32 flex-shrink-0">
+                      <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">악보 이미지</label>
+                      <div className="relative h-9 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer overflow-hidden group">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={(e) => handleImageUpload(idx, e)}
+                          disabled={uploadingIndex === idx}
+                        />
+                        {uploadingIndex === idx ? (
+                          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                        ) : hymn.scoreUrl ? (
+                          <div className="flex items-center gap-1 text-emerald-600">
+                            <ImageIcon className="w-4 h-4" />
+                            <span className="text-xs font-medium hidden lg:inline">등록됨</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-gray-400 group-hover:text-blue-500">
+                            <Upload className="w-4 h-4" />
+                            <span className="text-xs font-medium hidden lg:inline">업로드</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <button
                       onClick={() => handleDeleteHymn(idx)}
                       className="mt-5 p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
@@ -187,8 +292,17 @@ export default function Hymns() {
                       </p>
                     </div>
                     <div className="ml-4 flex-shrink-0">
-                      <button className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                        악보 보기
+                      <button
+                        onClick={() => hymn.scoreUrl ? setSelectedImage(hymn.scoreUrl) : null}
+                        disabled={!hymn.scoreUrl}
+                        className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2
+                          ${hymn.scoreUrl
+                            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                            : 'text-gray-400 bg-gray-50 cursor-not-allowed border border-gray-100'}
+                        `}
+                      >
+                        <ImageIcon className="w-4 h-4 hidden sm:inline-block" />
+                        {hymn.scoreUrl ? '악보 보기' : '악보 없음'}
                       </button>
                     </div>
                   </>

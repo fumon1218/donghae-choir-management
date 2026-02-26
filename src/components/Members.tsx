@@ -39,33 +39,36 @@ export default function Members() {
   const handleInvite = async () => {
     const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true`;
 
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(inviteUrl);
-      } else {
-        // Fallback for older browsers or non-secure contexts
-        const textArea = document.createElement("textarea");
-        textArea.value = inviteUrl;
-        textArea.style.position = "absolute";
-        textArea.style.left = "-999999px";
-        document.body.prepend(textArea);
-        textArea.select();
-        try {
-          document.execCommand('copy');
-        } catch (error) {
-          console.error('Fallback copy failed', error);
-          alert('초대 링크 복사에 실패했습니다. 지원하지 않는 환경입니다.');
-          return;
-        } finally {
-          textArea.remove();
-        }
+    // 1. 모바일 기기의 기본 공유하기 (카카오톡, 문자 등) 시도
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: '동해교회 찬양대 초대',
+          text: '동해교회 찬양대 웹 앱에 초대합니다.',
+          url: inviteUrl,
+        });
+        return; // 공유 성공 시 종료
+      } catch (error) {
+        console.log('공유 취소 또는 실패', error);
+        // 실패 시 아래 클립보드 복사 로직으로 넘어감
       }
-      setShowInviteToast(true);
-      setTimeout(() => setShowInviteToast(false), 3000);
-    } catch (err) {
-      console.error('Failed to copy: ', err);
-      alert('초대 링크를 복사하는데 실패했습니다. 다시 시도해주세요.');
     }
+
+    // 2. 최신 클립보드 API 복사 시도
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setShowInviteToast(true);
+        setTimeout(() => setShowInviteToast(false), 3000);
+        return;
+      } catch (err) {
+        console.error('Clipboard copy failed:', err);
+      }
+    }
+
+    // 3. 최후의 수단: 구형 브라우저 및 인앱 브라우저 (카카오톡 등) 대비
+    // 사용자에게 직접 복사하도록 프롬프트 창을 띄움 (가장 확실한 방법)
+    window.prompt('초대 링크 복사가 차단되었습니다. 아래 주소를 직접 복사해주세요.', inviteUrl);
   };
 
   const handleDelete = (member: Member) => {

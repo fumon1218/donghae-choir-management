@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2 } from 'lucide-react';
 
 export default function Members() {
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
@@ -11,7 +11,10 @@ export default function Members() {
   useEffect(() => {
     const savedMembers = localStorage.getItem('choir_extra_members');
     const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    setAllMembers([...initialMembers, ...extraMembers]);
+    const savedDeleted = localStorage.getItem('choir_deleted_members');
+    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+
+    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
   }, []);
 
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
@@ -27,6 +30,26 @@ export default function Members() {
     navigator.clipboard.writeText(inviteUrl);
     setShowInviteToast(true);
     setTimeout(() => setShowInviteToast(false), 3000);
+  };
+
+  const handleDelete = (member: Member) => {
+    if (window.confirm(`${member.name} 대원을 명단에서 삭제하시겠습니까?`)) {
+      const savedExtra = localStorage.getItem('choir_extra_members');
+      const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
+      const isExtra = extraMembers.some(m => m.id === member.id);
+
+      if (isExtra) {
+        const updatedExtra = extraMembers.filter(m => m.id !== member.id);
+        localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
+      } else {
+        const savedDeleted = localStorage.getItem('choir_deleted_members');
+        const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+        if (!deletedMembers.includes(member.id)) {
+          localStorage.setItem('choir_deleted_members', JSON.stringify([...deletedMembers, member.id]));
+        }
+      }
+      setAllMembers(prev => prev.filter(m => m.id !== member.id));
+    }
   };
 
   return (
@@ -79,9 +102,8 @@ export default function Members() {
                 `}
               >
                 {part === 'All' ? '전체' : part}
-                <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium ${
-                  activeTab === part ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <span className={`ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium ${activeTab === part ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                  }`}>
                   {part === 'All' ? allMembers.length : allMembers.filter(m => m.part === part).length}
                 </span>
               </button>
@@ -96,7 +118,7 @@ export default function Members() {
                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                   <User className="h-5 w-5" />
                 </div>
-                <div className="ml-4">
+                <div className="ml-4 flex-1">
                   <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                     {member.name}
                     {member.role && (
@@ -107,6 +129,13 @@ export default function Members() {
                   </div>
                   <div className="text-sm text-gray-500">{member.part}</div>
                 </div>
+                <button
+                  onClick={() => handleDelete(member)}
+                  className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
+                  title="삭제"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
             {filteredMembers.length === 0 && (
@@ -117,6 +146,6 @@ export default function Members() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -8,7 +8,10 @@ export default function Dashboard() {
   useEffect(() => {
     const savedMembers = localStorage.getItem('choir_extra_members');
     const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    setAllMembers([...initialMembers, ...extraMembers]);
+    const savedDeleted = localStorage.getItem('choir_deleted_members');
+    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+
+    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
   }, []);
 
   const totalMembers = allMembers.length;
@@ -27,7 +30,7 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
         <span className="text-gray-500 font-medium">동해교회 찬양대</span>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
@@ -38,7 +41,7 @@ export default function Dashboard() {
             <p className="text-2xl font-bold text-gray-900">{totalMembers}명</p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
             <Music className="w-6 h-6" />
@@ -48,7 +51,7 @@ export default function Dashboard() {
             <p className="text-2xl font-bold text-gray-900">{thisMonthHymns.length}곡</p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
           <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
             <Calendar className="w-6 h-6" />
@@ -69,8 +72,8 @@ export default function Dashboard() {
                 <span className="text-gray-600 font-medium">{part}</span>
                 <div className="flex items-center space-x-3 w-2/3">
                   <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div 
-                      className="bg-blue-600 h-2.5 rounded-full" 
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
                       style={{ width: `${(count / totalMembers) * 100}%` }}
                     ></div>
                   </div>

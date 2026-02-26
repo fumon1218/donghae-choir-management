@@ -23,7 +23,10 @@ export default function Attendance() {
   useEffect(() => {
     const savedMembers = localStorage.getItem('choir_extra_members');
     const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    setAllMembers([...initialMembers, ...extraMembers]);
+    const savedDeleted = localStorage.getItem('choir_deleted_members');
+    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+
+    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
   }, []);
 
   const practiceDates = getPracticeDates(2026, currentMonth);
@@ -35,7 +38,7 @@ export default function Attendance() {
     setAttendance(prev => {
       const memberData = prev[memberId] || {};
       const currentStatus = memberData[date] || 'none';
-      
+
       let nextStatus: AttendanceStatus = 'present';
       if (currentStatus === 'present') nextStatus = 'absent';
       else if (currentStatus === 'absent') nextStatus = 'none';
@@ -47,7 +50,7 @@ export default function Attendance() {
           [date]: nextStatus
         }
       };
-      
+
       localStorage.setItem('choir_attendance', JSON.stringify(newState));
       return newState;
     });
@@ -73,7 +76,7 @@ export default function Attendance() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">출석부 (2026년)</h1>
-        
+
         <div className="flex items-center gap-4">
           <div className="flex items-center space-x-2 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
             <button onClick={() => setCurrentMonth(m => m === 1 ? 12 : m - 1)} className="p-1.5 rounded hover:bg-gray-100">
@@ -84,15 +87,14 @@ export default function Attendance() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          
+
           <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1 overflow-x-auto">
             {parts.map(part => (
               <button
                 key={part}
                 onClick={() => setActivePart(part)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                  activePart === part ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${activePart === part ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
               >
                 {part === 'All' ? '전체' : part}
               </button>

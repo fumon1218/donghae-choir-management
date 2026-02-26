@@ -67,7 +67,6 @@ export default function Members() {
         return; // 공유 성공 시 종료
       } catch (error) {
         console.log('공유 취소 또는 실패', error);
-        // 실패 시 아래 클립보드 복사 로직으로 넘어감
       }
     }
 
@@ -84,8 +83,30 @@ export default function Members() {
     }
 
     // 3. 최후의 수단: 구형 브라우저 및 인앱 브라우저 (카카오톡 등) 대비
-    // 사용자에게 직접 복사하도록 프롬프트 창을 띄움 (가장 확실한 방법)
-    window.prompt('초대 링크 복사가 차단되었습니다. 아래 주소를 직접 복사해주세요.', inviteUrl);
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = inviteUrl;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+
+      textArea.focus();
+      textArea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+
+      if (successful) {
+        setShowInviteToast(true);
+        setTimeout(() => setShowInviteToast(false), 3000);
+      } else {
+        alert('지원하지 않는 환경입니다. 브라우저의 주소창에서 링크를 복사해주세요.');
+      }
+    } catch (err) {
+      console.error('Fallback copy failed', err);
+      alert('초대 링크 복사에 실패했습니다.');
+    }
   };
 
   const handleDelete = (member: Member) => {

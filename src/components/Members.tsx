@@ -8,13 +8,24 @@ export default function Members() {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [showInviteToast, setShowInviteToast] = useState(false);
 
+  // Load members and handle permissions
   useEffect(() => {
     const savedMembers = localStorage.getItem('choir_extra_members');
-    const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
+    const extraMembers: Member[] = savedMembers ? JSON.parse(savedMembers) : [];
+
+    // Check for updated roles in local storage
+    const savedRoles = localStorage.getItem('choir_member_roles');
+    const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
+
     const savedDeleted = localStorage.getItem('choir_deleted_members');
     const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
 
-    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
+    const combinedMembers = [...initialMembers, ...extraMembers].map(member => ({
+      ...member,
+      role: memberRoles[member.id] || member.role
+    }));
+
+    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
   }, []);
 
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
@@ -50,6 +61,23 @@ export default function Members() {
       }
       setAllMembers(prev => prev.filter(m => m.id !== member.id));
     }
+  };
+
+  const handleRoleChange = (memberId: string, newRole: string) => {
+    const savedRoles = localStorage.getItem('choir_member_roles');
+    const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
+
+    if (newRole) {
+      memberRoles[memberId] = newRole;
+    } else {
+      delete memberRoles[memberId];
+    }
+
+    localStorage.setItem('choir_member_roles', JSON.stringify(memberRoles));
+
+    setAllMembers(prev => prev.map(m =>
+      m.id === memberId ? { ...m, role: newRole || undefined } : m
+    ));
   };
 
   return (
@@ -123,19 +151,36 @@ export default function Members() {
                     {member.name}
                     {member.role && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {member.role}
+                        {member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자') ? '👑 ' : ''}{member.role}
                       </span>
                     )}
                   </div>
                   <div className="text-sm text-gray-500">{member.part}</div>
                 </div>
-                <button
-                  onClick={() => handleDelete(member)}
-                  className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
-                  title="삭제"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="text-xs border-gray-300 rounded-lg text-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white px-2 py-1 shadow-sm"
+                    value={member.role || ''}
+                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                  >
+                    <option value="">권한 없음</option>
+                    <option value="대장">대장</option>
+                    <option value="지휘자">지휘자</option>
+                    <option value="파트장">파트장</option>
+                    <option value="메인반주">메인반주</option>
+                    <option value="부반주">부반주</option>
+                    <option value="게시판 관리자">게시판 관리자</option>
+                    <option value="총무">총무</option>
+                    <option value="서기">서기</option>
+                  </select>
+                  <button
+                    onClick={() => handleDelete(member)}
+                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
+                    title="삭제"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
             {filteredMembers.length === 0 && (

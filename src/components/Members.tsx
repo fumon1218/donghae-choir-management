@@ -52,9 +52,19 @@ export default function Members() {
     setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
   }, []);
 
+  // Admin (My Profile) logic - using a reserved ID "admin"
+  const myProfileId = 'admin';
+  const myProfile = allMembers.find(m => m.id === myProfileId) || {
+    id: myProfileId,
+    name: '지휘자 (나)',
+    part: 'Orchestra' as Part,
+    role: '지휘자'
+  };
+
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
 
   const filteredMembers = allMembers.filter(member => {
+    if (member.id === myProfileId) return false; // Hide my profile from the general list
     const matchesPart = activeTab === 'All' || member.part === activeTab;
     const matchesSearch = member.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesPart && matchesSearch;
@@ -392,6 +402,43 @@ export default function Members() {
             </div>
           </div>
         )}
+
+        <div className="p-4 border-b border-gray-100 bg-gray-50/30">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">내 프로필</h2>
+          <div
+            onClick={() => setSelectedMember(myProfile)}
+            className="flex flex-col sm:flex-row sm:items-center p-4 border border-blue-100 rounded-xl hover:shadow-md transition-shadow bg-blue-50/30 cursor-pointer gap-4 group relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <div className="flex items-center gap-4 flex-1">
+              <div className="relative">
+                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden shadow-sm border-2 border-white">
+                  {myProfile.imageUrl ? (
+                    <img src={myProfile.imageUrl} alt={myProfile.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6" />
+                  )}
+                </div>
+                {myProfile.role && (myProfile.role === '지휘자' || myProfile.role === '대장' || myProfile.role.includes('관리자')) && (
+                  <span className="absolute -top-1 -right-1 text-base drop-shadow-sm">👑</span>
+                )}
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-base font-bold text-gray-900 truncate">
+                    {myProfile.name}
+                  </span>
+                  {myProfile.role && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 whitespace-nowrap shadow-sm border border-blue-200">
+                      {myProfile.role}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">{myProfile.part}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="border-b border-gray-200 overflow-x-auto">
           <nav className="flex -mb-px px-4" aria-label="Tabs">

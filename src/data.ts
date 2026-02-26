@@ -5,6 +5,7 @@ export interface Member {
   name: string;
   part: Part;
   role?: string;
+  imageUrl?: string;
 }
 
 export const members: Member[] = [

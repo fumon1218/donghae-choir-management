@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -11,6 +11,8 @@ export default function Members() {
   const [showInviteToast, setShowInviteToast] = useState(false);
   const [showFallbackModal, setShowFallbackModal] = useState(false);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Load join requests from Firestore
   useEffect(() => {
@@ -35,12 +37,16 @@ export default function Members() {
     const savedRoles = localStorage.getItem('choir_member_roles');
     const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
 
+    const savedImages = localStorage.getItem('choir_member_images');
+    const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
+
     const savedDeleted = localStorage.getItem('choir_deleted_members');
     const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
 
     const combinedMembers = [...initialMembers, ...extraMembers].map(member => ({
       ...member,
-      role: memberRoles[member.id] || member.role
+      role: memberRoles[member.id] || member.role,
+      imageUrl: memberImages[member.id] || member.imageUrl
     }));
 
     setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
@@ -184,6 +190,96 @@ export default function Members() {
     setAllMembers(prev => prev.map(m =>
       m.id === memberId ? { ...m, role: newRole || undefined } : m
     ));
+
+    // Update selectedMember if open
+    if (selectedMember && selectedMember.id === memberId) {
+      setSelectedMember(prev => prev ? { ...prev, role: newRole || undefined } : null);
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (memberId: string, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('5MB 이하의 이미지만 업로드 가능합니다.');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const VITE_IMGBB_API_KEY = typeof process !== 'undefined' && process.env && process.env.VITE_IMGBB_API_KEY ? process.env.VITE_IMGBB_API_KEY : (import.meta as any).env?.VITE_IMGBB_API_KEY || '';
+
+      if (!VITE_IMGBB_API_KEY) {
+        alert('ImgBB API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
+        setIsUploadingImage(false);
+        return;
+      }
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${VITE_IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const imageUrl = data.data.url;
+
+        // Save to local storage
+        const savedImages = localStorage.getItem('choir_member_images');
+        const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
+        memberImages[memberId] = imageUrl;
+        localStorage.setItem('choir_member_images', JSON.stringify(memberImages));
+
+        setAllMembers(prev => prev.map(m =>
+          m.id === memberId ? { ...m, imageUrl } : m
+        ));
+
+        if (selectedMember && selectedMember.id === memberId) {
+          setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
+        }
+      } else {
+        alert('이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert('오류가 발생했습니다. 다시 시도해 주세요.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleUpdateMemberInfo = (memberId: string, field: keyof Member, value: string) => {
+    // Basic local state update for name/part
+    setAllMembers(prev => prev.map(m =>
+      m.id === memberId ? { ...m, [field]: value } : m
+    ));
+
+    if (selectedMember && selectedMember.id === memberId) {
+      setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
+    }
+
+    // Note: full persistence for name/part edits isn't completely implemented 
+    // for initialMembers since they are static in data.ts, but works for extraMembers.
+    // We update choir_extra_members if it's a new member.
+    const savedExtra = localStorage.getItem('choir_extra_members');
+    const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
+    const isExtra = extraMembers.some(m => m.id === memberId);
+    if (isExtra) {
+      const updatedExtra = extraMembers.map(m => m.id === memberId ? { ...m, [field]: value } : m);
+      localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
+    }
   };
 
   return (
@@ -324,11 +420,19 @@ export default function Members() {
         <div className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredMembers.map((member) => (
-              <div key={member.id} className="flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4">
+              <div
+                key={member.id}
+                onClick={() => setSelectedMember(member)}
+                className="flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 cursor-pointer gap-4 group"
+              >
                 <div className="flex items-center gap-4 flex-1">
                   <div className="relative">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                      <User className="h-5 w-5" />
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                      {member.imageUrl ? (
+                        <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="h-5 w-5" />
+                      )}
                     </div>
                     {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
                       <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
@@ -348,30 +452,6 @@ export default function Members() {
                     <div className="text-sm text-gray-500">{member.part}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    className="text-xs border-gray-300 rounded-lg text-gray-600 focus:ring-blue-500 focus:border-blue-500 bg-white px-2 py-1 shadow-sm"
-                    value={member.role || ''}
-                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                  >
-                    <option value="">권한 없음</option>
-                    <option value="대장">대장</option>
-                    <option value="지휘자">지휘자</option>
-                    <option value="파트장">파트장</option>
-                    <option value="메인반주">메인반주</option>
-                    <option value="부반주">부반주</option>
-                    <option value="게시판 관리자">게시판 관리자</option>
-                    <option value="총무">총무</option>
-                    <option value="서기">서기</option>
-                  </select>
-                  <button
-                    onClick={() => handleDelete(member)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             ))}
             {filteredMembers.length === 0 && (
@@ -382,6 +462,120 @@ export default function Members() {
           </div>
         </div>
       </div>
+
+      {selectedMember && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 relative">
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setSelectedMember(null);
+                  handleDelete(selectedMember);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-rose-500 hover:bg-rose-50 hover:text-rose-600 backdrop-blur shadow-sm transition-colors"
+                title="삭제"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setSelectedMember(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-gray-500 hover:bg-gray-100 backdrop-blur shadow-sm transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative h-32 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-end justify-center pb-6">
+              <div className="absolute -bottom-12 relative group">
+                <div className="w-24 h-24 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden flex items-center justify-center relative">
+                  {selectedMember.imageUrl ? (
+                    <img src={selectedMember.imageUrl} alt={selectedMember.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <User className="h-10 w-10" />
+                    </div>
+                  )}
+                  {selectedMember.role && (selectedMember.role === '지휘자' || selectedMember.role === '파트장' || selectedMember.role === '메인반주' || selectedMember.role === '게시판 관리자' || selectedMember.role.includes('관리자')) && (
+                    <span className="absolute top-0 right-0 text-xl drop-shadow">👑</span>
+                  )}
+                  <div
+                    className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center cursor-pointer transition-all"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploadingImage ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+                  </div>
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full border-2 border-white flex items-center justify-center shadow hover:bg-blue-700 transition"
+                >
+                  <Plus className="w-4 h-4 text-white" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(selectedMember.id, e)}
+                />
+              </div>
+            </div>
+
+            <div className="pt-16 px-6 pb-6 text-center">
+              <input
+                type="text"
+                value={selectedMember.name}
+                onChange={(e) => handleUpdateMemberInfo(selectedMember.id, 'name', e.target.value)}
+                className="text-xl font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none text-center transition-colors w-32"
+              />
+              <p className="text-sm text-gray-500 mt-1">{selectedMember.part} 파트</p>
+
+              <div className="mt-6 pt-6 border-t border-gray-100 space-y-4 text-left">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    파트 변경
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {parts.filter(p => p !== 'All').map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => handleUpdateMemberInfo(selectedMember.id, 'part', p)}
+                        className={`py-1.5 px-2 text-xs font-medium rounded-lg border transition-all ${selectedMember.part === p
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    직분 (권한) 설정
+                  </label>
+                  <select
+                    className="w-full text-sm border-gray-300 rounded-xl text-gray-700 focus:ring-blue-500 focus:border-blue-500 bg-white px-3 py-2.5 shadow-sm border"
+                    value={selectedMember.role || ''}
+                    onChange={(e) => handleRoleChange(selectedMember.id, e.target.value)}
+                  >
+                    <option value="">권한 없음 (일반 대원)</option>
+                    <option value="대장">대장 👑</option>
+                    <option value="지휘자">지휘자 👑</option>
+                    <option value="파트장">파트장 👑</option>
+                    <option value="메인반주">메인반주 👑</option>
+                    <option value="부반주">부반주</option>
+                    <option value="게시판 관리자">게시판 관리자 👑</option>
+                    <option value="총무">총무</option>
+                    <option value="서기">서기</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

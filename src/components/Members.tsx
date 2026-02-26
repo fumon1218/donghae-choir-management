@@ -36,11 +36,36 @@ export default function Members() {
     return matchesPart && matchesSearch;
   });
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true`;
-    navigator.clipboard.writeText(inviteUrl);
-    setShowInviteToast(true);
-    setTimeout(() => setShowInviteToast(false), 3000);
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(inviteUrl);
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement("textarea");
+        textArea.value = inviteUrl;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.prepend(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } catch (error) {
+          console.error('Fallback copy failed', error);
+          alert('초대 링크 복사에 실패했습니다. 지원하지 않는 환경입니다.');
+          return;
+        } finally {
+          textArea.remove();
+        }
+      }
+      setShowInviteToast(true);
+      setTimeout(() => setShowInviteToast(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      alert('초대 링크를 복사하는데 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleDelete = (member: Member) => {

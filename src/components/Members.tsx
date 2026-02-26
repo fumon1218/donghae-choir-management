@@ -9,6 +9,7 @@ export default function Members() {
   const [searchQuery, setSearchQuery] = useState('');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [showInviteToast, setShowInviteToast] = useState(false);
+  const [showFallbackModal, setShowFallbackModal] = useState(false);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
 
   // Load join requests from Firestore
@@ -101,11 +102,11 @@ export default function Members() {
         setShowInviteToast(true);
         setTimeout(() => setShowInviteToast(false), 3000);
       } else {
-        alert('지원하지 않는 환경입니다. 브라우저의 주소창에서 링크를 복사해주세요.');
+        setShowFallbackModal(true);
       }
     } catch (err) {
       console.error('Fallback copy failed', err);
-      alert('초대 링크 복사에 실패했습니다.');
+      setShowFallbackModal(true);
     }
   };
 
@@ -215,7 +216,43 @@ export default function Members() {
       {showInviteToast && (
         <div className="fixed bottom-8 right-8 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 z-50">
           <CheckCircle className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-medium">초대 링크가 클립보드에 복사되었습니다!</span>
+          <span className="text-sm font-medium">초대 링크가 복사되었습니다!</span>
+        </div>
+      )}
+
+      {showFallbackModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-gray-900">초대 링크 복사</h3>
+                <button
+                  onClick={() => setShowFallbackModal(false)}
+                  className="text-gray-400 hover:text-gray-500 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                현재 브라우저 환경에서 자동 복사를 지원하지 않습니다. 아래 입력창의 <b>주소를 길게 눌러 직접 복사</b>해 주세요.
+              </p>
+              <input
+                type="text"
+                readOnly
+                value={`${window.location.origin}${window.location.pathname}?invite=true`}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setShowFallbackModal(false)}
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

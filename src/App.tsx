@@ -69,14 +69,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans">
+    <div className="min-h-screen bg-gray-50 flex font-sans relative">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
-      
+
       <main className="flex-1 ml-64 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           {renderContent()}
         </div>
       </main>
+
+      {/* Version Information */}
+      <div className="fixed bottom-4 right-4 text-xs font-medium text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 pointer-events-none z-50">
+        v1.0.0
+      </div>
     </div>
   );
 }

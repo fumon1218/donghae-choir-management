@@ -324,20 +324,29 @@ export default function Members() {
         <div className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredMembers.map((member) => (
-              <div key={member.id} className="flex items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                  <User className="h-5 w-5" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    {member.name}
-                    {member.role && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                        {member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자') ? '👑 ' : ''}{member.role}
-                      </span>
+              <div key={member.id} className="flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="relative">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <User className="h-5 w-5" />
+                    </div>
+                    {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                      <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500">{member.part}</div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {member.name}
+                      </span>
+                      {member.role && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
+                          {member.role}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">{member.part}</div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <select

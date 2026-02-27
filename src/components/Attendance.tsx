@@ -148,7 +148,9 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
                 </th>
                 {practiceDates.map(pd => (
                   <th key={pd.date} className="p-4 text-center min-w-[80px]">
-                    <div className="text-xs font-semibold text-gray-500 uppercase">{pd.dayName === 'Sun' ? '일' : '수'}</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase">
+                      {pd.dayName === 'Sun' ? '일' : pd.dayName === 'Wed' ? '수' : '토'}
+                    </div>
                     <div className="text-sm font-bold text-gray-900">{pd.formattedDate}</div>
                   </th>
                 ))}
@@ -159,17 +161,17 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
                 <tr key={member.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="sticky left-0 z-10 bg-white p-4 border-r border-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{member.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{member.part[0]}</span>
+                      <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{member.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 whitespace-nowrap">{member.part[0]}</span>
                     </div>
                   </td>
                   {practiceDates.map(pd => {
                     const status = attendance[member.id]?.[pd.date] || 'none';
                     return (
-                      <td key={pd.date} className="p-2 text-center">
+                      <td key={pd.date} className="p-2 text-center min-w-[80px]">
                         <button
                           onClick={() => toggleAttendance(member.id, pd.date)}
-                          className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-all duration-200 ${getStatusBg(status)}`}
+                          className={`w-10 h-10 rounded-lg border flex items-center justify-center mx-auto transition-all duration-200 ${getStatusBg(status)}`}
                         >
                           {getStatusIcon(status)}
                         </button>

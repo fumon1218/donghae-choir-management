@@ -1,6 +1,6 @@
 export interface PracticeDate {
   date: string; // YYYY-MM-DD
-  dayName: 'Sun' | 'Wed';
+  dayName: 'Sun' | 'Wed' | 'Sat';
   formattedDate: string; // MM/DD
 }
 
@@ -12,10 +12,10 @@ export function getPracticeDates(year: number, month: number): PracticeDate[] {
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay(); // 0 = Sun, 3 = Wed
 
-    if (dayOfWeek === 0 || dayOfWeek === 3) {
+    if (dayOfWeek === 0 || dayOfWeek === 3 || dayOfWeek === 6) {
       dates.push({
         date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-        dayName: dayOfWeek === 0 ? 'Sun' : 'Wed',
+        dayName: dayOfWeek === 0 ? 'Sun' : dayOfWeek === 3 ? 'Wed' : 'Sat',
         formattedDate: `${month}/${day}`,
       });
     }

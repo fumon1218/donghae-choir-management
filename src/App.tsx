@@ -47,10 +47,18 @@ export default function App() {
 
           // 기존 Firestore에 권한이 있다면 해당 권한 사용
           if (userSnap.exists()) {
-            data = userSnap.data();
+            data = { uid: currentUser.uid, ...userSnap.data() };
             if (data?.role) {
               role = data.role;
             }
+          } else {
+            // Firestore 문서가 아직 없는 경우에도 기본 데이터 설정 (uid 필수!)
+            data = {
+              uid: currentUser.uid,
+              name: currentUser.displayName || '이름 없음',
+              email: currentUser.email || '',
+              photoURL: currentUser.photoURL || ''
+            };
           }
 
           // 자동 최고 관리자(지휘자) 승급 로직: 이름 또는 이메일 기반

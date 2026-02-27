@@ -1,17 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Users, Music, Calendar } from 'lucide-react';
-import { members as initialMembers, hymns, schedules, Member } from '../data';
+import { Users, Music, Calendar, Loader2 } from 'lucide-react';
+import { hymns, schedules, Member } from '../data';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Dashboard() {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedMembers = localStorage.getItem('choir_extra_members');
-    const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    const savedDeleted = localStorage.getItem('choir_deleted_members');
-    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+    // Firestore에서 승인된 대원 목록만 실시간으로 가져오기
+    const q = query(
+      collection(db, 'users'),
+      where('role', '!=', '대기권한')
+    );
 
-    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const memberList: Member[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        memberList.push({
+          id: doc.id,
+          name: data.name || '',
+          part: data.part || 'Orchestra',
+          role: data.role,
+          imageUrl: data.imageUrl
+        } as Member);
+      });
+      setAllMembers(memberList);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching members for dashboard:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const totalMembers = allMembers.length;
@@ -28,37 +51,43 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-baseline gap-3">
         <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
-        <span className="text-gray-500 font-medium">동해교회 찬양대</span>
+        <span className="text-gray-500 font-medium whitespace-nowrap">동해교회 찬양대</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg shrink-0">
             <Users className="w-6 h-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-gray-500">총 인원</p>
-            <p className="text-2xl font-bold text-gray-900">{totalMembers}명</p>
+            {loading ? (
+              <div className="h-8 flex items-center">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
+              </div>
+            ) : (
+              <p className="text-2xl font-bold text-gray-900 truncate">{totalMembers}명</p>
+            )}
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
             <Music className="w-6 h-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-gray-500">이번 달 찬송가</p>
-            <p className="text-2xl font-bold text-gray-900">{thisMonthHymns.length}곡</p>
+            <p className="text-2xl font-bold text-gray-900 truncate">{thisMonthHymns.length}곡</p>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
+          <div className="p-3 bg-purple-50 text-purple-600 rounded-lg shrink-0">
             <Calendar className="w-6 h-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-gray-500">주간 연습</p>
-            <p className="text-2xl font-bold text-gray-900">{schedules.length}회</p>
+            <p className="text-2xl font-bold text-gray-900 truncate">{schedules.length}회</p>
           </div>
         </div>
       </div>

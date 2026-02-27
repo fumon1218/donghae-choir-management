@@ -1,5 +1,5 @@
 import { useState, useEffect, ChangeEvent, useRef } from 'react';
-import { members as initialMembers, Part, Member } from '../data';
+import { Part, Member } from '../data';
 import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -33,48 +33,29 @@ export default function Members({ userRole, userData }: MembersProps) {
     return () => unsubscribe();
   }, []);
 
-  // Load members and handle permissions
+  // Load members from Firestore (Real-time sync)
   useEffect(() => {
-    const savedMembers = localStorage.getItem('choir_extra_members');
-    const extraMembers: Member[] = savedMembers ? JSON.parse(savedMembers) : [];
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const memberList: Member[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        // 대기권한 회원은 신청 목록에서 처리하므로 일반 명단에서는 제외 (검색 및 관리를 위해)
+        if (data.role === '대기권한') return;
 
-    // Check for updated roles in local storage
-    const savedRoles = localStorage.getItem('choir_member_roles');
-    const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
+        memberList.push({
+          id: doc.id,
+          name: data.name || '',
+          part: data.part || 'Orchestra',
+          role: data.role || '일반대원',
+          imageUrl: data.imageUrl
+        } as Member);
+      });
+      setAllMembers(memberList);
+    });
 
-    const savedImages = localStorage.getItem('choir_member_images');
-    const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
-
-    const savedDeleted = localStorage.getItem('choir_deleted_members');
-    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
-
-    let combinedMembers: Member[] = [...initialMembers, ...extraMembers].map(member => ({
-      ...member,
-      role: memberRoles[member.id] || member.role,
-      imageUrl: memberImages[member.id] || member.imageUrl
-    }));
-
-    // Inject myProfile (current user) securely
-    if (userData?.uid) {
-      const myProfileMember: Member = {
-        id: userData.uid,
-        name: userData.displayName || userData.name || '지휘자 (나)',
-        part: userData.part || ('Orchestra' as Part),
-        role: userRole || '지휘자',
-        imageUrl: userData.photoURL || userData.imageUrl || undefined
-      };
-
-      // If it exists in local test data, replace it, else push it
-      const existingIdx = combinedMembers.findIndex(m => m.id === userData.uid);
-      if (existingIdx >= 0) {
-        combinedMembers[existingIdx] = myProfileMember;
-      } else {
-        combinedMembers.push(myProfileMember);
-      }
-    }
-
-    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
-  }, [userData, userRole]);
+    return () => unsubscribe();
+  }, []);
 
   // Admin (My Profile) logic - using a reserved ID "admin" or UID
   const myProfileId = userData?.uid || 'admin';
@@ -96,71 +77,37 @@ export default function Members({ userRole, userData }: MembersProps) {
   });
 
 
-  const handleDelete = (member: Member) => {
-    if (window.confirm(`${member.name} 대원을 명단에서 삭제하시겠습니까?`)) {
-      const savedExtra = localStorage.getItem('choir_extra_members');
-      const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
-      const isExtra = extraMembers.some(m => m.id === member.id);
-
-      if (isExtra) {
-        const updatedExtra = extraMembers.filter(m => m.id !== member.id);
-        localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
-      } else {
-        const savedDeleted = localStorage.getItem('choir_deleted_members');
-        const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
-        if (!deletedMembers.includes(member.id)) {
-          localStorage.setItem('choir_deleted_members', JSON.stringify([...deletedMembers, member.id]));
-        }
+  const handleDelete = async (member: Member) => {
+    if (window.confirm(`${member.name} 대원을 명단에서 완전히 삭제하시겠습니까?\n(데이터베이스에서 해당 계정 정보가 제거됩니다.)`)) {
+      try {
+        await deleteDoc(doc(db, 'users', member.id));
+        alert(`${member.name} 대원이 삭제되었습니다.`);
+      } catch (error) {
+        console.error('Error deleting member:', error);
+        alert('삭제 중 오류가 발생했습니다.');
       }
-      setAllMembers(prev => prev.filter(m => m.id !== member.id));
     }
   };
 
   const handleApprove = async (request: any) => {
     try {
-      // 1. Update Firestore request status
-      const requestRef = doc(db, 'join_requests', request.id);
-      await updateDoc(requestRef, {
+      // 1. Update Firestore users collection to grant actual access
+      if (request.uid) {
+        await setDoc(doc(db, 'users', request.uid), {
+          role: '일반대원',
+          part: request.part,
+          name: request.name,
+          email: request.email || '',
+          imageUrl: request.imageUrl || '',
+          approvedAt: Date.now()
+        }, { merge: true });
+      }
+
+      // 2. Update Firestore request status to mark as processed
+      await updateDoc(doc(db, 'join_requests', request.id), {
         status: 'approved'
       });
 
-      // 2. Update Firestore users collection to grant actual access
-      if (request.uid) {
-        try {
-          await updateDoc(doc(db, 'users', request.uid), {
-            role: '일반대원',
-            part: request.part,
-            name: request.name
-          });
-        } catch (e: any) {
-          try {
-            // Fallback if users document doesn't exist yet
-            await setDoc(doc(db, 'users', request.uid), {
-              role: '일반대원',
-              part: request.part,
-              name: request.name,
-              email: request.email || '',
-              imageUrl: ''
-            });
-          } catch (setErr: any) {
-            console.error("SetDoc permission error", setErr);
-            throw new Error(`Firebase 데이터베이스 권한 오류: ${setErr.message}\n(안내해 드린 Firestore 규칙이 아직 적용되지 않았거나 잘못 입력되었습니다.)`);
-          }
-        }
-      }
-
-      // 3. Add to local members (in a real app this would also be synced to a members collection in Firestore)
-      const newMember: Member = {
-        id: `extra-${Date.now()}`,
-        name: request.name,
-        part: request.part,
-      };
-
-      const savedMembers = localStorage.getItem('choir_extra_members');
-      const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-      localStorage.setItem('choir_extra_members', JSON.stringify([...extraMembers, newMember]));
-
-      setAllMembers(prev => [...prev, newMember]);
       alert(`${request.name} 대원의 가입이 승인되었습니다.`);
     } catch (error: any) {
       console.error('Error approving request:', error);
@@ -180,31 +127,21 @@ export default function Members({ userRole, userData }: MembersProps) {
     }
   };
 
-  const handleRoleChange = (memberId: string, newRole: string) => {
-    const savedRoles = localStorage.getItem('choir_member_roles');
-    const memberRoles: Record<string, string> = savedRoles ? JSON.parse(savedRoles) : {};
-
-    if (newRole) {
-      memberRoles[memberId] = newRole;
-    } else {
-      delete memberRoles[memberId];
-    }
-
-    localStorage.setItem('choir_member_roles', JSON.stringify(memberRoles));
-
-    setAllMembers(prev => prev.map(m =>
-      m.id === memberId ? { ...m, role: newRole || undefined } : m
-    ));
-
-    // Update selectedMember if open
-    if (selectedMember && selectedMember.id === memberId) {
-      setSelectedMember(prev => prev ? { ...prev, role: newRole || undefined } : null);
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    try {
+      await updateDoc(doc(db, 'users', memberId), {
+        role: newRole
+      });
+      // 실시간 Snapshot이 처리해주므로 로컬 state 업데이트는 기다리지 않아도 됨
+    } catch (error) {
+      console.error('Error updating role:', error);
+      alert('역할 변경 중 오류가 발생했습니다.');
     }
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = async (memberId: string, e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (memberId: string, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -213,113 +150,57 @@ export default function Members({ userRole, userData }: MembersProps) {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('5MB 이하의 이미지만 업로드 가능합니다.');
+    if (file.size > 2 * 1024 * 1024) {
+      alert('파일 크기가 너무 큽니다. 2MB 이하의 이미지를 업로드해주세요.');
       return;
     }
 
-    try {
-      setIsUploadingImage(true);
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const VITE_IMGBB_API_KEY = typeof process !== 'undefined' && process.env && process.env.VITE_IMGBB_API_KEY ? process.env.VITE_IMGBB_API_KEY : (import.meta as any).env?.VITE_IMGBB_API_KEY || '';
-
-      if (!VITE_IMGBB_API_KEY) {
-        alert('ImgBB API 키가 설정되지 않았습니다. 환경변수를 확인해주세요.');
-        setIsUploadingImage(false);
-        return;
-      }
-
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${VITE_IMGBB_API_KEY}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const imageUrl = data.data.url;
-
-        // Save to Firestore if it's the current user's profile
-        if (userData && memberId === userData.uid) {
-          try {
-            const userRef = doc(db, 'users', userData.uid);
-            await updateDoc(userRef, {
-              photoURL: imageUrl
-            });
-
-            // Also update the local myProfile state immediately
-            setAllMembers(prev => prev.map(m =>
-              m.id === myProfileId ? { ...m, imageUrl } : m
-            ));
-            if (selectedMember && selectedMember.id === myProfileId) {
-              setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
-            }
-          } catch (dbErr) {
-            console.error('Failed to update Firestore photoURL', dbErr);
-          }
-        } else {
-          // Save to local storage for other generic members
-          const savedImages = localStorage.getItem('choir_member_images');
-          const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
-          memberImages[memberId] = imageUrl;
-          localStorage.setItem('choir_member_images', JSON.stringify(memberImages));
-
-          setAllMembers(prev => prev.map(m =>
-            m.id === memberId ? { ...m, imageUrl } : m
-          ));
-
-          if (selectedMember && selectedMember.id === memberId) {
-            setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
-          }
+    setIsUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageUrl = event.target?.result as string;
+      if (imageUrl) {
+        try {
+          const userRef = doc(db, 'users', memberId);
+          await updateDoc(userRef, {
+            imageUrl: imageUrl
+          });
+          // 실시간 Snapshot이 처리함
+        } catch (error) {
+          console.error('Image upload failed to Firestore:', error);
+          alert('이미지 저장 중 오류가 발생했습니다.');
         }
-      } else {
-        alert('이미지 업로드에 실패했습니다.');
       }
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      alert('오류가 발생했습니다. 다시 시도해 주세요.');
-    } finally {
       setIsUploadingImage(false);
-    }
+    };
+    reader.onerror = () => {
+      alert('이미지 읽기 중 오류가 발생했습니다.');
+      setIsUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUpdateMemberInfo = async (memberId: string, field: keyof Member, value: string) => {
-    // 1. Update local state immediately for UI responsiveness
-    setAllMembers(prev => prev.map(m =>
-      m.id === memberId ? { ...m, [field]: value } : m
-    ));
+    try {
+      const userRef = doc(db, 'users', memberId);
+      const updateData: any = { [field]: value };
 
-    if (selectedMember && selectedMember.id === memberId) {
-      setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
-    }
-
-    // 2. Persist changes depending on whether it's the current user or an extra member
-    if (userData && memberId === userData.uid) {
-      try {
-        const userRef = doc(db, 'users', userData.uid);
-        const updateData: any = {};
-
-        if (field === 'name') {
-          updateData.displayName = value;
-        } else {
-          updateData[field] = value;
-        }
-
-        await updateDoc(userRef, updateData);
-      } catch (dbErr) {
-        console.error('Failed to update Firestore member info', dbErr);
+      if (field === 'name') {
+        updateData.displayName = value;
       }
-    } else {
-      // It's not the logged-in user, check if it's an extra member in local storage
-      const savedExtra = localStorage.getItem('choir_extra_members');
-      const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
-      const isExtra = extraMembers.some(m => m.id === memberId);
-      if (isExtra) {
-        const updatedExtra = extraMembers.map(m => m.id === memberId ? { ...m, [field]: value } : m);
-        localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
+
+      await updateDoc(userRef, updateData);
+
+      setAllMembers(prev => prev.map(m =>
+        m.id === memberId ? { ...m, [field]: value } : m
+      ));
+
+      if (selectedMember && selectedMember.id === memberId) {
+        setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
       }
+    } catch (error) {
+      console.error('Failed to update member info:', error);
+      alert('변경 사항을 저장하는 중 오류가 발생했습니다.');
     }
   };
 

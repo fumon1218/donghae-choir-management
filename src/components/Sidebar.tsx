@@ -1,6 +1,6 @@
-import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen, Settings } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen, Settings, Edit2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BoardCategory } from '../data';
 import logoUrl from '../assets/logo.jpg';
@@ -17,6 +17,8 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, userData }: SidebarProps) {
   const [boardCategories, setBoardCategories] = useState<BoardCategory[]>([]);
   const [showBoardManager, setShowBoardManager] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
 
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
 
@@ -32,6 +34,21 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
 
     return () => unsubscribe();
   }, []);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim() || !userData?.uid) return;
+
+    try {
+      await updateDoc(doc(db, 'users', userData.uid), {
+        name: editName.trim()
+      });
+      setIsEditingProfile(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('프로필 수정 중 오류가 발생했습니다.');
+    }
+  };
 
   const navItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -110,9 +127,23 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
               (userData?.name || '익').charAt(0)
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{userData?.name || '익명'}</p>
-            <p className="text-xs text-gray-500 truncate">{userRole || '일반 대원'}</p>
+          <div className="flex-1 min-w-0 flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">{userData?.name || '익명'}</p>
+              <p className="text-xs text-gray-500 truncate">{userRole || '일반 대원'}</p>
+            </div>
+            {userData?.uid && (
+              <button
+                onClick={() => {
+                  setEditName(userData.name || '');
+                  setIsEditingProfile(true);
+                }}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex-shrink-0"
+                title="프로필 이름 수정"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
         <button
@@ -125,6 +156,51 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
       </div>
 
       {showBoardManager && <BoardManager onClose={() => setShowBoardManager(false)} />}
+
+      {/* Profile Edit Modal */}
+      {isEditingProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg font-bold text-gray-900">내 프로필 수정</h2>
+              <button onClick={() => setIsEditingProfile(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleProfileUpdate} className="p-6">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  표시할 이름
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="예: 지휘자, 박선생 등"
+                  maxLength={20}
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+                >
+                  저장하기
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
 import { getPracticeDates, PracticeDate } from '../utils/dateUtils';
 import { ChevronLeft, ChevronRight, Check, X, Save, Users } from 'lucide-react';
+import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 type AttendanceStatus = 'present' | 'absent' | 'none';
 
@@ -11,14 +13,25 @@ interface AttendanceRecord {
   };
 }
 
-export default function Attendance() {
+interface AttendanceProps {
+  userData?: any;
+  userRole?: string | null;
+}
+
+export default function Attendance({ userData, userRole }: AttendanceProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [activePart, setActivePart] = useState<Part | 'All'>('All');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord>(() => {
-    const saved = localStorage.getItem('choir_attendance');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [attendance, setAttendance] = useState<AttendanceRecord>({});
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'attendance', 'all'), (docSnap) => {
+      if (docSnap.exists()) {
+        setAttendance(docSnap.data() as AttendanceRecord);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const savedMembers = localStorage.getItem('choir_extra_members');
@@ -26,8 +39,20 @@ export default function Attendance() {
     const savedDeleted = localStorage.getItem('choir_deleted_members');
     const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
 
-    setAllMembers([...initialMembers, ...extraMembers].filter(m => !deletedMembers.includes(m.id)));
-  }, []);
+    let combinedMembers = [...initialMembers, ...extraMembers];
+    if (userData && userData.uid) {
+      const myMember: Member = {
+        id: userData.uid,
+        name: userData.displayName || userData.name || '지휘자 (나)',
+        part: userData.part || 'Orchestra',
+      };
+      if (!combinedMembers.some(m => m.id === myMember.id)) {
+        combinedMembers.push(myMember);
+      }
+    }
+
+    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
+  }, [userData]);
 
   const practiceDates = getPracticeDates(2026, currentMonth);
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
@@ -43,16 +68,26 @@ export default function Attendance() {
       if (currentStatus === 'present') nextStatus = 'absent';
       else if (currentStatus === 'absent') nextStatus = 'none';
 
-      const newState = {
+      // Async Firestore update
+      const updateKey = `${memberId}.${date}`;
+      updateDoc(doc(db, 'attendance', 'all'), {
+        [updateKey]: nextStatus
+      }).catch(err => {
+        // Fallback if doc doesn't exist
+        setDoc(doc(db, 'attendance', 'all'), {
+          [memberId]: {
+            [date]: nextStatus
+          }
+        }, { merge: true }).catch(e => console.error("Firestore Set Error:", e));
+      });
+
+      return {
         ...prev,
         [memberId]: {
           ...memberData,
           [date]: nextStatus
         }
       };
-
-      localStorage.setItem('choir_attendance', JSON.stringify(newState));
-      return newState;
     });
   };
 

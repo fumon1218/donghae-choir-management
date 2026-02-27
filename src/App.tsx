@@ -186,7 +186,7 @@ export default function App() {
       case 'members':
         return <Members userRole={userRole} userData={userData} />;
       case 'attendance':
-        return <Attendance />;
+        return <Attendance userData={userData} userRole={userRole} />;
       case 'opening-hymns':
         return <OpeningHymns />;
       case 'hymns':

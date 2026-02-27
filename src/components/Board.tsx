@@ -81,15 +81,20 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
     if (!content.trim()) return;
 
     try {
-      const newPost = {
+      const newPost: any = {
         boardId,
         author: userData?.name || '익명',
         authorUid: userData?.uid || 'unknown',
         content,
-        imageUrl: imageUrl.trim() || undefined,
-        youtubeUrl: youtubeUrl.trim() || undefined,
         createdAt: Date.now(),
       };
+
+      if (imageUrl.trim()) {
+        newPost.imageUrl = imageUrl.trim();
+      }
+      if (youtubeUrl.trim()) {
+        newPost.youtubeUrl = youtubeUrl.trim();
+      }
 
       await addDoc(collection(db, 'board_posts'), newPost);
 
@@ -98,9 +103,9 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
       setImageUrl('');
       setYoutubeUrl('');
       setShowForm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding post:', error);
-      alert('게시글을 작성하는 중 오류가 발생했습니다.');
+      alert(`게시글을 작성하는 중 오류가 발생했습니다: ${error.message || error}`);
     }
   };
 

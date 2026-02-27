@@ -17,6 +17,14 @@ export interface BoardCategory {
   order: number;
 }
 
+export interface Comment {
+  id: string;
+  author: string;
+  authorUid: string;
+  content: string;
+  createdAt: number;
+}
+
 export interface BoardPost {
   id: string;
   boardId: string;
@@ -26,6 +34,7 @@ export interface BoardPost {
   imageUrl?: string;
   youtubeUrl?: string;
   createdAt: number;
+  comments?: Comment[];
 }
 
 export interface Hymn {

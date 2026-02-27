@@ -25,6 +25,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isInviteMode, setIsInviteMode] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,10 +43,14 @@ export default function App() {
           const userSnap = await getDoc(userRef);
 
           let role = '대기권한';
+          let data = null;
 
           // 기존 Firestore에 권한이 있다면 해당 권한 사용
-          if (userSnap.exists() && userSnap.data()?.role) {
-            role = userSnap.data().role;
+          if (userSnap.exists()) {
+            data = userSnap.data();
+            if (data?.role) {
+              role = data.role;
+            }
           }
 
           // 자동 최고 관리자(지휘자) 승급 로직: 이름 또는 이메일 기반
@@ -56,13 +61,11 @@ export default function App() {
 
           if (isAutoAdmin && role === '대기권한') {
             role = '지휘자';
-            // Firestore에 지휘자 권한으로 자동 업데이트 (최초 1회)
-            // (setDoc with merge flag is safer in case doc doesn't exist yet, 
-            // but ensureUserInFirestore from Login.tsx should have created it)
-            // Using a simple API approach to update without importing setDoc if already using getDoc
+            if (data) data.role = '지휘자';
           }
 
           setUserRole(role);
+          setUserData(data);
 
         } catch (error) {
           console.error("Error fetching user role:", error);
@@ -72,6 +75,7 @@ export default function App() {
         }
       } else {
         setUserRole(null);
+        setUserData(null);
         setLoading(false);
       }
     });
@@ -144,7 +148,7 @@ export default function App() {
       case 'dashboard':
         return <Dashboard />;
       case 'members':
-        return <Members userRole={userRole} />;
+        return <Members userRole={userRole} userData={userData} />;
       case 'attendance':
         return <Attendance />;
       case 'board':

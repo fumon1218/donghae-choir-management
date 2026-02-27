@@ -6,9 +6,10 @@ import { db } from '../lib/firebase';
 
 interface MembersProps {
   userRole: string | null;
+  userData?: any;
 }
 
-export default function Members({ userRole }: MembersProps) {
+export default function Members({ userRole, userData }: MembersProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,12 +57,13 @@ export default function Members({ userRole }: MembersProps) {
   }, []);
 
   // Admin (My Profile) logic - using a reserved ID "admin"
-  const myProfileId = 'admin';
+  const myProfileId = userData?.uid || 'admin';
   const myProfile = allMembers.find(m => m.id === myProfileId) || {
     id: myProfileId,
-    name: '지휘자 (나)',
-    part: 'Orchestra' as Part,
-    role: '지휘자'
+    name: userData?.displayName || userData?.name || '지휘자 (나)',
+    part: userData?.part || ('Orchestra' as Part),
+    role: userRole || '지휘자',
+    imageUrl: userData?.photoURL || userData?.imageUrl || null
   };
 
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
@@ -194,18 +196,38 @@ export default function Members({ userRole }: MembersProps) {
       if (data.success) {
         const imageUrl = data.data.url;
 
-        // Save to local storage
-        const savedImages = localStorage.getItem('choir_member_images');
-        const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
-        memberImages[memberId] = imageUrl;
-        localStorage.setItem('choir_member_images', JSON.stringify(memberImages));
+        // Save to Firestore if it's the current user's profile
+        if (userData && memberId === userData.uid) {
+          try {
+            const userRef = doc(db, 'users', userData.uid);
+            await updateDoc(userRef, {
+              photoURL: imageUrl
+            });
 
-        setAllMembers(prev => prev.map(m =>
-          m.id === memberId ? { ...m, imageUrl } : m
-        ));
+            // Also update the local myProfile state immediately
+            setAllMembers(prev => prev.map(m =>
+              m.id === myProfileId ? { ...m, imageUrl } : m
+            ));
+            if (selectedMember && selectedMember.id === myProfileId) {
+              setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
+            }
+          } catch (dbErr) {
+            console.error('Failed to update Firestore photoURL', dbErr);
+          }
+        } else {
+          // Save to local storage for other generic members
+          const savedImages = localStorage.getItem('choir_member_images');
+          const memberImages: Record<string, string> = savedImages ? JSON.parse(savedImages) : {};
+          memberImages[memberId] = imageUrl;
+          localStorage.setItem('choir_member_images', JSON.stringify(memberImages));
 
-        if (selectedMember && selectedMember.id === memberId) {
-          setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
+          setAllMembers(prev => prev.map(m =>
+            m.id === memberId ? { ...m, imageUrl } : m
+          ));
+
+          if (selectedMember && selectedMember.id === memberId) {
+            setSelectedMember(prev => prev ? { ...prev, imageUrl } : null);
+          }
         }
       } else {
         alert('이미지 업로드에 실패했습니다.');
@@ -218,8 +240,8 @@ export default function Members({ userRole }: MembersProps) {
     }
   };
 
-  const handleUpdateMemberInfo = (memberId: string, field: keyof Member, value: string) => {
-    // Basic local state update for name/part
+  const handleUpdateMemberInfo = async (memberId: string, field: keyof Member, value: string) => {
+    // 1. Update local state immediately for UI responsiveness
     setAllMembers(prev => prev.map(m =>
       m.id === memberId ? { ...m, [field]: value } : m
     ));
@@ -228,15 +250,31 @@ export default function Members({ userRole }: MembersProps) {
       setSelectedMember(prev => prev ? { ...prev, [field]: value } : null);
     }
 
-    // Note: full persistence for name/part edits isn't completely implemented 
-    // for initialMembers since they are static in data.ts, but works for extraMembers.
-    // We update choir_extra_members if it's a new member.
-    const savedExtra = localStorage.getItem('choir_extra_members');
-    const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
-    const isExtra = extraMembers.some(m => m.id === memberId);
-    if (isExtra) {
-      const updatedExtra = extraMembers.map(m => m.id === memberId ? { ...m, [field]: value } : m);
-      localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
+    // 2. Persist changes depending on whether it's the current user or an extra member
+    if (userData && memberId === userData.uid) {
+      try {
+        const userRef = doc(db, 'users', userData.uid);
+        const updateData: any = {};
+
+        if (field === 'name') {
+          updateData.displayName = value;
+        } else {
+          updateData[field] = value;
+        }
+
+        await updateDoc(userRef, updateData);
+      } catch (dbErr) {
+        console.error('Failed to update Firestore member info', dbErr);
+      }
+    } else {
+      // It's not the logged-in user, check if it's an extra member in local storage
+      const savedExtra = localStorage.getItem('choir_extra_members');
+      const extraMembers: Member[] = savedExtra ? JSON.parse(savedExtra) : [];
+      const isExtra = extraMembers.some(m => m.id === memberId);
+      if (isExtra) {
+        const updatedExtra = extraMembers.map(m => m.id === memberId ? { ...m, [field]: value } : m);
+        localStorage.setItem('choir_extra_members', JSON.stringify(updatedExtra));
+      }
     }
   };
 

@@ -2,14 +2,13 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 1. 기존 프로젝트(강릉분원 업무수첩) 규칙 보존
+    // 공용 사용자 데이터 (본인 쓰기 가능, 모두가 읽기 가능)
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 2. 신규 프로젝트(동해교회 찬양대) 규칙 추가
-    // 현재 앱 내 별도 로그인(Auth) 기능이 없으므로, 원활한 가입 및 명단 관리를 위해
-    // 해당 지정 컬렉션들에 대해서만 모든 사용자의 읽기/쓰기를 허용합니다.
+    // 공개 데이터
     match /join_requests/{document=**} {
       allow read, write: if true;
     }
@@ -20,7 +19,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // 3. 그 외 알 수 없는 모든 경로에 대해서는 접근(읽기/쓰기) 원천 차단
     match /{document=**} {
       allow read, write: if false;
     }

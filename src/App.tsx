@@ -41,18 +41,20 @@ export default function App() {
           const userRef = doc(db, 'users', currentUser.uid);
           const userSnap = await getDoc(userRef);
           if (userSnap.exists()) {
-            setUserRole(userSnap.data().role);
+            setUserRole(userSnap.data()?.role || '대기권한');
           } else {
             setUserRole('대기권한');
           }
         } catch (error) {
           console.error("Error fetching user role:", error);
           setUserRole('대기권한');
+        } finally {
+          setLoading(false);
         }
       } else {
         setUserRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);

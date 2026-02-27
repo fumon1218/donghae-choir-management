@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, initializeAuth, browserLocalPersistence, browserPopupRedirectResolver, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
     apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY,
@@ -13,5 +13,18 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+
+// Safari(ITP/IndexedDB 차단)에서 getAuth()가 무한 정지하는 버그를 피하기 위해 명시적으로 localStorage를 사용
+let authInstance;
+try {
+    authInstance = initializeAuth(app, {
+        persistence: browserLocalPersistence,
+        popupRedirectResolver: browserPopupRedirectResolver
+    });
+} catch (e) {
+    // 이미 초기화된 경우 대비 Fallback
+    authInstance = getAuth(app);
+}
+export const auth = authInstance;
+
 export const googleProvider = new GoogleAuthProvider();

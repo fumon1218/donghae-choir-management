@@ -4,6 +4,7 @@ import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User, Lock, AlertCircle, Mail, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
+import logoUrl from '../assets/logo.jpg';
 
 interface LoginProps {
   onLogin: () => void;
@@ -108,7 +109,7 @@ export default function Login({ onLogin }: LoginProps) {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <img
-            src="https://ais-pre-lmlcnppibbail3xnbi3fpl-88483622903.asia-east1.run.app/logo.png"
+            src={logoUrl}
             alt="Dong-Hae Church Choir Logo"
             className="w-24 h-24 object-contain"
             onError={(e) => {

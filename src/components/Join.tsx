@@ -1,9 +1,10 @@
 import { useState, FormEvent } from 'react';
 import { Part, Member } from '../data';
-import { Music, User, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { User, Loader2, LogOut, ArrowRight, CheckCircle } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { User as FirebaseUser } from 'firebase/auth';
+import { db, auth } from '../lib/firebase';
+import { signOut, User as FirebaseUser } from 'firebase/auth';
+import logoUrl from '../assets/logo.jpg';
 
 interface JoinProps {
   user?: FirebaseUser | null;
@@ -72,7 +73,7 @@ export default function Join({ user }: JoinProps) {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <img
-            src="https://ais-pre-lmlcnppibbail3xnbi3fpl-88483622903.asia-east1.run.app/logo.png"
+            src={logoUrl}
             alt="Dong-Hae Church Choir Logo"
             className="w-24 h-24 object-contain"
             onError={(e) => {

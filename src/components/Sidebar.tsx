@@ -1,4 +1,5 @@
 import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen } from 'lucide-react';
+import logoUrl from '../assets/logo.jpg';
 
 interface SidebarProps {
   activeTab: string;
@@ -21,9 +22,9 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarPr
     <aside className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col fixed inset-y-0 left-0 z-10">
       <div className="h-20 flex items-center px-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <img 
-            src="https://ais-pre-lmlcnppibbail3xnbi3fpl-88483622903.asia-east1.run.app/logo.png" 
-            alt="Dong-Hae Church Choir Logo" 
+          <img
+            src={logoUrl}
+            alt="Dong-Hae Church Choir Logo"
             className="w-10 h-10 object-contain"
             onError={(e) => {
               // Fallback if image not found
@@ -31,7 +32,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarPr
             }}
           />
           <span className="text-lg font-bold text-gray-900 leading-tight tracking-tight">
-            동해교회<br/>찬양대
+            동해교회<br />찬양대
           </span>
         </div>
       </div>
@@ -46,8 +47,8 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarPr
               onClick={() => setActiveTab(item.id)}
               className={`
                 w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
-                ${isActive 
-                  ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50' 
+                ${isActive
+                  ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }
               `}

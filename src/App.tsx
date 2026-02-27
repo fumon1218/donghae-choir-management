@@ -35,12 +35,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // 10초 동안 로딩 상태가 풀리지 않으면 강제 해제합니다. (모바일/사파리 등의 IndexedDB 지연 방지)
+    const fallbackTimer = setTimeout(() => {
+      setLoading(false);
+    }, 10000);
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         try {
           const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
+          // Firestore 오프라인/연결 불안정 시 무한 대기를 막기 위해 타임아웃 추가
+          const userSnap: any = await Promise.race([
+            getDoc(userRef),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 7000))
+          ]);
 
           let role = '대기권한';
           let data = null;
@@ -87,7 +96,11 @@ export default function App() {
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      clearTimeout(fallbackTimer);
+      unsubscribe();
+    };
   }, []);
 
   const handleLogin = () => {

@@ -4,7 +4,12 @@ import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Cam
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-export default function Members() {
+interface MembersProps {
+  userRole: string | null;
+}
+
+export default function Members({ userRole }: MembersProps) {
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -363,7 +368,7 @@ export default function Members() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {joinRequests.length > 0 && (
+        {isAdmin && joinRequests.length > 0 && (
           <div className="bg-blue-50/50 border-b border-blue-100 p-4">
             <h2 className="text-sm font-semibold text-blue-900 flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-blue-600" />
@@ -403,42 +408,44 @@ export default function Members() {
           </div>
         )}
 
-        <div className="p-4 border-b border-gray-100 bg-gray-50/30">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">내 프로필</h2>
-          <div
-            onClick={() => setSelectedMember(myProfile)}
-            className="flex flex-col sm:flex-row sm:items-center p-4 border border-blue-100 rounded-xl hover:shadow-md transition-shadow bg-blue-50/30 cursor-pointer gap-4 group relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-            <div className="flex items-center gap-4 flex-1">
-              <div className="relative">
-                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden shadow-sm border-2 border-white">
-                  {myProfile.imageUrl ? (
-                    <img src={myProfile.imageUrl} alt={myProfile.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="h-6 w-6" />
+        {isAdmin && (
+          <div className="p-4 border-b border-gray-100 bg-gray-50/30">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">내 프로필</h2>
+            <div
+              onClick={() => setSelectedMember(myProfile)}
+              className="flex flex-col sm:flex-row sm:items-center p-4 border border-blue-100 rounded-xl hover:shadow-md transition-shadow bg-blue-50/30 cursor-pointer gap-4 group relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <div className="flex items-center gap-4 flex-1">
+                <div className="relative">
+                  <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden shadow-sm border-2 border-white">
+                    {myProfile.imageUrl ? (
+                      <img src={myProfile.imageUrl} alt={myProfile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-6 w-6" />
+                    )}
+                  </div>
+                  {myProfile.role && (myProfile.role === '지휘자' || myProfile.role === '대장' || myProfile.role.includes('관리자')) && (
+                    <span className="absolute -top-1 -right-1 text-base drop-shadow-sm">👑</span>
                   )}
                 </div>
-                {myProfile.role && (myProfile.role === '지휘자' || myProfile.role === '대장' || myProfile.role.includes('관리자')) && (
-                  <span className="absolute -top-1 -right-1 text-base drop-shadow-sm">👑</span>
-                )}
-              </div>
-              <div className="flex flex-col flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-base font-bold text-gray-900 truncate">
-                    {myProfile.name}
-                  </span>
-                  {myProfile.role && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 whitespace-nowrap shadow-sm border border-blue-200">
-                      {myProfile.role}
+                <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-base font-bold text-gray-900 truncate">
+                      {myProfile.name}
                     </span>
-                  )}
+                    {myProfile.role && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 whitespace-nowrap shadow-sm border border-blue-200">
+                        {myProfile.role}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">{myProfile.part}</div>
                 </div>
-                <div className="text-sm text-gray-500">{myProfile.part}</div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="border-b border-gray-200 overflow-x-auto">
           <nav className="flex -mb-px px-4" aria-label="Tabs">
@@ -469,8 +476,8 @@ export default function Members() {
             {filteredMembers.map((member) => (
               <div
                 key={member.id}
-                onClick={() => setSelectedMember(member)}
-                className="flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 cursor-pointer gap-4 group"
+                onClick={() => isAdmin && setSelectedMember(member)}
+                className={`flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4 group ${isAdmin ? 'cursor-pointer' : ''}`}
               >
                 <div className="flex items-center gap-4 flex-1">
                   <div className="relative">

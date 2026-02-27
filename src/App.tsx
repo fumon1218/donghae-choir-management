@@ -4,6 +4,9 @@
  */
 
 import { useState, useEffect } from 'react';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
@@ -16,9 +19,9 @@ import Board from './components/Board';
 import OpeningHymns from './components/OpeningHymns';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('choir_isLoggedIn') === 'true';
-  });
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isInviteMode, setIsInviteMode] = useState(false);
 
@@ -30,21 +33,58 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('choir_isLoggedIn', isLoggedIn.toString());
-  }, [isLoggedIn]);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setUserRole(userSnap.data().role);
+          } else {
+            setUserRole('대기권한');
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          setUserRole('대기권한');
+        }
+      } else {
+        setUserRole(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setActiveTab('dashboard');
+  const handleLogin = () => {
+    // Firebase auth state listener handles the actual state update
   };
 
-  if (isInviteMode) {
-    return <Join />;
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
-  if (!isLoggedIn) {
+  // 1. 모든 접속자는 로그인이 필수
+  if (!user) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  // 2. 로그인 상태에서 초대 링크 파라미터가 있다면 가입 화면 표시
+  if (isInviteMode) {
+    return <Join user={user} />;
   }
 
   const renderContent = () => {
@@ -52,7 +92,7 @@ export default function App() {
       case 'dashboard':
         return <Dashboard />;
       case 'members':
-        return <Members />;
+        return <Members userRole={userRole} />;
       case 'attendance':
         return <Attendance />;
       case 'board':
@@ -60,7 +100,7 @@ export default function App() {
       case 'opening-hymns':
         return <OpeningHymns />;
       case 'hymns':
-        return <Hymns />;
+        return <Hymns userRole={userRole} />;
       case 'schedule':
         return <Schedule />;
       default:

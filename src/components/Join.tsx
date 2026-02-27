@@ -3,9 +3,14 @@ import { Part, Member } from '../data';
 import { Music, User, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { User as FirebaseUser } from 'firebase/auth';
 
-export default function Join() {
-  const [name, setName] = useState('');
+interface JoinProps {
+  user?: FirebaseUser | null;
+}
+
+export default function Join({ user }: JoinProps) {
+  const [name, setName] = useState(user?.displayName || '');
   const [part, setPart] = useState<Part>('Soprano');
   const [isJoined, setIsJoined] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,6 +23,8 @@ export default function Join() {
 
     try {
       await addDoc(collection(db, 'join_requests'), {
+        uid: user?.uid || '',
+        email: user?.email || '',
         name,
         part,
         status: 'pending',

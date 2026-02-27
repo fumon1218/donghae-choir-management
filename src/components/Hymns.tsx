@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { hymns as initialHymns, Hymn } from '../data';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
 
-export default function Hymns() {
+interface HymnsProps {
+  userRole: string | null;
+}
+
+export default function Hymns({ userRole }: HymnsProps) {
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [allHymns, setAllHymns] = useState<Hymn[]>(() => {
     const saved = localStorage.getItem('choir_hymns');
@@ -162,31 +167,33 @@ export default function Hymns() {
             </button>
           </div>
 
-          {!isEditing ? (
-            <button
-              onClick={handleStartEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-            >
-              <Edit2 className="w-4 h-4" />
-              찬송가 수정
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
+          {isAdmin && (
+            !isEditing ? (
               <button
-                onClick={handleCancelEdit}
+                onClick={handleStartEdit}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
               >
-                <X className="w-4 h-4" />
-                취소
+                <Edit2 className="w-4 h-4" />
+                찬송가 수정
               </button>
-              <button
-                onClick={handleSaveEdit}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                <Save className="w-4 h-4" />
-                저장하기
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <X className="w-4 h-4" />
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  <Save className="w-4 h-4" />
+                  저장하기
+                </button>
+              </div>
+            )
           )}
         </div>
       </div>

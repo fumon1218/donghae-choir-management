@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { hymns as initialHymns, Hymn } from '../data';
-import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Smartphone, Monitor } from 'lucide-react';
 
 interface HymnsProps {
   userRole: string | null;
@@ -17,6 +17,7 @@ export default function Hymns({ userRole }: HymnsProps) {
   const [editHymns, setEditHymns] = useState<Hymn[]>([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
   const currentMonthHymns = allHymns.filter(h => h.month === currentMonth);
 
@@ -148,8 +149,15 @@ export default function Hymns({ userRole }: HymnsProps) {
       <ImageModal />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">월별 찬송가</h1>
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center space-x-4 bg-white rounded-lg shadow-sm border border-gray-200 p-1 ${isEditing ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">
+          <button
+            onClick={() => setIsMobileView(!isMobileView)}
+            className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
+            title={isMobileView ? "PC 화면으로 보기" : "모바일 화면으로 보기"}
+          >
+            {isMobileView ? <Monitor className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+          </button>
+          <div className={`flex items-center space-x-2 sm:space-x-4 bg-white rounded-lg shadow-sm border border-gray-200 p-1 ${isEditing ? 'opacity-50 pointer-events-none' : ''}`}>
             <button
               onClick={handlePrevMonth}
               className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors"
@@ -215,116 +223,161 @@ export default function Hymns({ userRole }: HymnsProps) {
           )}
         </div>
 
-        {(isEditing ? editHymns : currentMonthHymns).length > 0 ? (
-          <div className="divide-y divide-gray-100">
-            {(isEditing ? editHymns : currentMonthHymns).map((hymn, idx) => (
-              <div key={idx} className="p-6 flex items-center hover:bg-gray-50 transition-colors">
-                {isEditing ? (
-                  <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="w-20 flex-shrink-0">
-                      <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">주차</label>
-                      <input
-                        type="number"
-                        value={hymn.week}
-                        onChange={(e) => handleUpdateHymn(idx, 'week', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex-1 w-full">
-                      <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">찬송가 제목</label>
-                      <input
-                        type="text"
-                        value={hymn.title}
-                        onChange={(e) => handleUpdateHymn(idx, 'title', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="제목 입력"
-                      />
-                    </div>
-                    <div className="flex-1 w-full">
-                      <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">작곡가</label>
-                      <input
-                        type="text"
-                        value={hymn.composer}
-                        onChange={(e) => handleUpdateHymn(idx, 'composer', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="작곡가 입력"
-                      />
-                    </div>
-                    <div className="w-16 sm:w-20 lg:w-32 flex-shrink-0">
-                      <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">악보 이미지</label>
-                      <div className="relative h-9 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer overflow-hidden group">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          onChange={(e) => handleImageUpload(idx, e)}
-                          disabled={uploadingIndex === idx}
-                        />
-                        {uploadingIndex === idx ? (
-                          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                        ) : hymn.scoreUrl ? (
-                          <div className="flex items-center gap-1 text-emerald-600">
-                            <ImageIcon className="w-4 h-4" />
-                            <span className="text-xs font-medium hidden lg:inline">등록됨</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-gray-400 group-hover:text-blue-500">
-                            <Upload className="w-4 h-4" />
-                            <span className="text-xs font-medium hidden lg:inline">업로드</span>
-                          </div>
-                        )}
+        {!isEditing && !isMobileView && currentMonthHymns.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50/50 border-b border-gray-100">
+                  <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">주차</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500">제목 및 작곡</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">악보</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {currentMonthHymns.map((hymn, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-50 text-blue-600 font-bold text-sm rounded-lg border border-blue-100">
+                        {hymn.week}주
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-bold text-gray-900">{hymn.title}</span>
+                        <span className="text-xs text-gray-500">작곡: {hymn.composer}</span>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteHymn(idx)}
-                      className="mt-5 p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold text-lg border border-blue-100">
-                      {hymn.week}주
-                    </div>
-                    <div className="ml-6 flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Music className="w-4 h-4 text-gray-400" />
-                        {hymn.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                        작곡: {hymn.composer}
-                      </p>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
+                    </td>
+                    <td className="p-4 text-center">
                       <button
                         onClick={() => hymn.scoreUrl ? setSelectedImage(hymn.scoreUrl) : null}
                         disabled={!hymn.scoreUrl}
-                        className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2
+                        className={`inline-flex items-center justify-center p-2 rounded-lg transition-colors
                           ${hymn.scoreUrl
                             ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
                             : 'text-gray-400 bg-gray-50 cursor-not-allowed border border-gray-100'}
                         `}
+                        title={hymn.scoreUrl ? '악보 보기' : '악보 없음'}
                       >
-                        <ImageIcon className="w-4 h-4 hidden sm:inline-block" />
-                        {hymn.scoreUrl ? '악보 보기' : '악보 없음'}
+                        <ImageIcon className="w-4 h-4" />
                       </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <Music className="w-8 h-8 text-gray-400" />
+          (isEditing ? editHymns : currentMonthHymns).length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {(isEditing ? editHymns : currentMonthHymns).map((hymn, idx) => (
+                <div key={idx} className="p-6 flex items-center hover:bg-gray-50 transition-colors">
+                  {isEditing ? (
+                    <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="w-20 flex-shrink-0">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">주차</label>
+                        <input
+                          type="number"
+                          value={hymn.week}
+                          onChange={(e) => handleUpdateHymn(idx, 'week', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">찬송가 제목</label>
+                        <input
+                          type="text"
+                          value={hymn.title}
+                          onChange={(e) => handleUpdateHymn(idx, 'title', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="제목 입력"
+                        />
+                      </div>
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">작곡가</label>
+                        <input
+                          type="text"
+                          value={hymn.composer}
+                          onChange={(e) => handleUpdateHymn(idx, 'composer', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="작곡가 입력"
+                        />
+                      </div>
+                      <div className="w-16 sm:w-20 lg:w-32 flex-shrink-0">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">악보 이미지</label>
+                        <div className="relative h-9 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer overflow-hidden group">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            onChange={(e) => handleImageUpload(idx, e)}
+                            disabled={uploadingIndex === idx}
+                          />
+                          {uploadingIndex === idx ? (
+                            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                          ) : hymn.scoreUrl ? (
+                            <div className="flex items-center gap-1 text-emerald-600">
+                              <ImageIcon className="w-4 h-4" />
+                              <span className="text-xs font-medium hidden lg:inline">등록됨</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-gray-400 group-hover:text-blue-500">
+                              <Upload className="w-4 h-4" />
+                              <span className="text-xs font-medium hidden lg:inline">업로드</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteHymn(idx)}
+                        className="mt-5 p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold text-lg border border-blue-100">
+                        {hymn.week}주
+                      </div>
+                      <div className="ml-6 flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <Music className="w-4 h-4 text-gray-400" />
+                          {hymn.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                          작곡: {hymn.composer}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex-shrink-0">
+                        <button
+                          onClick={() => hymn.scoreUrl ? setSelectedImage(hymn.scoreUrl) : null}
+                          disabled={!hymn.scoreUrl}
+                          className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2
+                          ${hymn.scoreUrl
+                              ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                              : 'text-gray-400 bg-gray-50 cursor-not-allowed border border-gray-100'}
+                        `}
+                        >
+                          <ImageIcon className="w-4 h-4 hidden sm:inline-block" />
+                          {hymn.scoreUrl ? '악보 보기' : '악보 없음'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
-            <h3 className="text-lg font-medium text-gray-900">찬송가 목록이 없습니다</h3>
-            <p className="mt-1 text-gray-500">해당 월의 찬송가 일정이 등록되지 않았습니다.</p>
-          </div>
+          ) : (
+            <div className="p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <Music className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">찬송가 목록이 없습니다</h3>
+              <p className="mt-1 text-gray-500">해당 월의 찬송가 일정이 등록되지 않았습니다.</p>
+            </div>
+          )
         )}
       </div>
     </div>

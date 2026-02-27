@@ -1,6 +1,6 @@
 import { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -13,6 +13,7 @@ export default function Members({ userRole, userData }: MembersProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -327,6 +328,13 @@ export default function Members({ userRole, userData }: MembersProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">인원 관리</h1>
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setIsMobileView(!isMobileView)}
+            className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
+            title={isMobileView ? "PC 화면으로 보기" : "모바일 화면으로 보기"}
+          >
+            {isMobileView ? <Monitor className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+          </button>
           <div className="relative flex-1 sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -448,48 +456,98 @@ export default function Members({ userRole, userData }: MembersProps) {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredMembers.map((member) => (
-              <div
-                key={member.id}
-                onClick={() => isAdmin && setSelectedMember(member)}
-                className={`flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4 group ${isAdmin ? 'cursor-pointer' : ''}`}
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="relative">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
-                      {member.imageUrl ? (
-                        <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="h-5 w-5" />
+          {isMobileView ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredMembers.map((member) => (
+                <div
+                  key={member.id}
+                  onClick={() => isAdmin && setSelectedMember(member)}
+                  className={`flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4 group ${isAdmin ? 'cursor-pointer' : ''}`}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="relative">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                        {member.imageUrl ? (
+                          <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="h-5 w-5" />
+                        )}
+                      </div>
+                      {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                        <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
                       )}
                     </div>
-                    {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
-                      <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
-                    )}
-                  </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {member.name}
-                      </span>
-                      {member.role && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
-                          {member.role}
+                    <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-gray-900 truncate">
+                          {member.name}
                         </span>
-                      )}
+                        {member.role && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
+                            {member.role}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500">{member.part}</div>
                     </div>
-                    <div className="text-sm text-gray-500">{member.part}</div>
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">사진</th>
+                      <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">이름</th>
+                      <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">파트</th>
+                      <th className="p-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">직분</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredMembers.map((member) => (
+                      <tr
+                        key={member.id}
+                        onClick={() => isAdmin && setSelectedMember(member)}
+                        className={`hover:bg-gray-50 transition-colors ${isAdmin ? 'cursor-pointer' : ''}`}
+                      >
+                        <td className="p-4">
+                          <div className="relative inline-block">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                              {member.imageUrl ? (
+                                <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="h-5 w-5" />
+                              )}
+                            </div>
+                            {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                              <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm font-medium text-gray-900">{member.name}</td>
+                        <td className="p-4 text-sm text-gray-500">{member.part}</td>
+                        <td className="p-4">
+                          {member.role && (
+                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              {member.role}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-            {filteredMembers.length === 0 && (
-              <div className="col-span-full py-12 text-center text-gray-500">
-                검색 결과가 없습니다.
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+          {filteredMembers.length === 0 && (
+            <div className="col-span-full py-12 text-center text-gray-500">
+              검색 결과가 없습니다.
+            </div>
+          )}
         </div>
       </div>
 
@@ -605,7 +663,8 @@ export default function Members({ userRole, userData }: MembersProps) {
             </div>
           </div>
         </div>
-      )}
+      )
+      }
     </div >
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, CalendarDays, Smartphone, Monitor } from 'lucide-react';
 
 interface OpeningHymn {
   id: string;
@@ -15,6 +15,7 @@ export default function OpeningHymns() {
   const [allOpeningHymns, setAllOpeningHymns] = useState<OpeningHymn[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editList, setEditList] = useState<OpeningHymn[]>([]);
+  const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
   useEffect(() => {
     const saved = localStorage.getItem('choir_opening_hymns');
@@ -51,7 +52,7 @@ export default function OpeningHymns() {
       // Sort by date string
       return a.date.localeCompare(b.date);
     });
-    
+
     setAllOpeningHymns(updatedHymns);
     localStorage.setItem('choir_opening_hymns', JSON.stringify(updatedHymns));
     setIsEditing(false);
@@ -101,71 +102,104 @@ export default function OpeningHymns() {
             </button>
           )}
         </div>
-        <div className="divide-y divide-gray-100">
-          {list.length > 0 ? (
-            list.map((hymn, idx) => (
-              <div key={hymn.id} className="p-4 hover:bg-gray-50 transition-colors">
-                {isEditing ? (
-                  <div className="flex flex-col sm:flex-row items-end gap-3">
-                    <div className="w-32 flex-shrink-0">
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">날짜</label>
-                      <input
-                        type="date"
-                        value={hymn.date}
-                        onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'date', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      />
+        {!isEditing && !isMobileView && list.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className={`bg-${accentColor}-50/30 border-b border-gray-100`}>
+                  <th className="p-3 text-xs font-semibold text-gray-500 w-24">날짜</th>
+                  <th className="p-3 text-xs font-semibold text-gray-500 w-24">인도자</th>
+                  <th className="p-3 text-xs font-semibold text-gray-500">제목</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {list.map((hymn) => (
+                  <tr key={hymn.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3">
+                      <span className={`inline-flex px-2 py-1 rounded bg-${accentColor}-50 text-${accentColor}-700 font-bold text-xs border border-${accentColor}-100`}>
+                        {hymn.date ? hymn.date.split('-').slice(1).join('.') : '-'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        {hymn.leader}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-sm font-bold text-gray-900">{hymn.title}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {list.length > 0 ? (
+              list.map((hymn, idx) => (
+                <div key={hymn.id} className="p-4 hover:bg-gray-50 transition-colors">
+                  {isEditing ? (
+                    <div className="flex flex-col sm:flex-row items-end gap-3">
+                      <div className="w-32 flex-shrink-0">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">날짜</label>
+                        <input
+                          type="date"
+                          value={hymn.date}
+                          onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'date', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="w-24 flex-shrink-0">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">인도자</label>
+                        <input
+                          type="text"
+                          value={hymn.leader}
+                          onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'leader', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="이름 입력"
+                        />
+                      </div>
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">찬송가 제목</label>
+                        <input
+                          type="text"
+                          value={hymn.title}
+                          onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'title', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="제목 입력"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleDeleteHymn(hymn.id)}
+                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div className="w-24 flex-shrink-0">
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">인도자</label>
-                      <input
-                        type="text"
-                        value={hymn.leader}
-                        onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'leader', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="이름 입력"
-                      />
-                    </div>
-                    <div className="flex-1 w-full">
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">찬송가 제목</label>
-                      <input
-                        type="text"
-                        value={hymn.title}
-                        onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'title', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="제목 입력"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleDeleteHymn(hymn.id)}
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className={`w-20 h-10 rounded-xl bg-${accentColor}-50 flex items-center justify-center text-${accentColor}-600 font-bold text-xs border border-${accentColor}-100 flex-shrink-0`}>
-                      {hymn.date ? hymn.date.split('-').slice(1).join('.') : '-'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {hymn.leader}
-                        </span>
-                        <h3 className="text-sm font-bold text-gray-900">{hymn.title}</h3>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className={`w-20 h-10 rounded-xl bg-${accentColor}-50 flex items-center justify-center text-${accentColor}-600 font-bold text-xs border border-${accentColor}-100 flex-shrink-0`}>
+                        {hymn.date ? hymn.date.split('-').slice(1).join('.') : '-'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {hymn.leader}
+                          </span>
+                          <h3 className="text-sm font-bold text-gray-900">{hymn.title}</h3>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-400 text-sm">
+                등록된 찬송가가 없습니다.
               </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-gray-400 text-sm">
-              등록된 찬송가가 없습니다.
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -179,9 +213,16 @@ export default function OpeningHymns() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">시작찬송 관리</h1>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center space-x-4 bg-white rounded-lg shadow-sm border border-gray-200 p-1 ${isEditing ? 'opacity-50 pointer-events-none' : ''}`}>
+
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">
+          <button
+            onClick={() => setIsMobileView(!isMobileView)}
+            className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
+            title={isMobileView ? "PC 화면으로 보기" : "모바일 화면으로 보기"}
+          >
+            {isMobileView ? <Monitor className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
+          </button>
+          <div className={`flex items-center space-x-2 sm:space-x-4 bg-white rounded-lg shadow-sm border border-gray-200 p-1 ${isEditing ? 'opacity-50 pointer-events-none' : ''}`}>
             <button onClick={handlePrevMonth} className="p-2 rounded-md hover:bg-gray-100 text-gray-600 transition-colors">
               <ChevronLeft className="w-5 h-5" />
             </button>

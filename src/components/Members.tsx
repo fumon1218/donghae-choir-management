@@ -47,16 +47,35 @@ export default function Members({ userRole, userData }: MembersProps) {
     const savedDeleted = localStorage.getItem('choir_deleted_members');
     const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
 
-    const combinedMembers = [...initialMembers, ...extraMembers].map(member => ({
+    let combinedMembers: Member[] = [...initialMembers, ...extraMembers].map(member => ({
       ...member,
       role: memberRoles[member.id] || member.role,
       imageUrl: memberImages[member.id] || member.imageUrl
     }));
 
-    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
-  }, []);
+    // Inject myProfile (current user) securely
+    if (userData?.uid) {
+      const myProfileMember: Member = {
+        id: userData.uid,
+        name: userData.displayName || userData.name || '지휘자 (나)',
+        part: userData.part || ('Orchestra' as Part),
+        role: userRole || '지휘자',
+        imageUrl: userData.photoURL || userData.imageUrl || undefined
+      };
 
-  // Admin (My Profile) logic - using a reserved ID "admin"
+      // If it exists in local test data, replace it, else push it
+      const existingIdx = combinedMembers.findIndex(m => m.id === userData.uid);
+      if (existingIdx >= 0) {
+        combinedMembers[existingIdx] = myProfileMember;
+      } else {
+        combinedMembers.push(myProfileMember);
+      }
+    }
+
+    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
+  }, [userData, userRole]);
+
+  // Admin (My Profile) logic - using a reserved ID "admin" or UID
   const myProfileId = userData?.uid || 'admin';
   const myProfile = allMembers.find(m => m.id === myProfileId) || {
     id: myProfileId,

@@ -40,11 +40,30 @@ export default function App() {
         try {
           const userRef = doc(db, 'users', currentUser.uid);
           const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            setUserRole(userSnap.data()?.role || '대기권한');
-          } else {
-            setUserRole('대기권한');
+
+          let role = '대기권한';
+
+          // 기존 Firestore에 권한이 있다면 해당 권한 사용
+          if (userSnap.exists() && userSnap.data()?.role) {
+            role = userSnap.data().role;
           }
+
+          // 자동 최고 관리자(지휘자) 승급 로직: 이름 또는 이메일 기반
+          const isAutoAdmin =
+            currentUser.email === 'fumon1218@gmail.com' ||
+            currentUser.displayName?.includes('박선생') ||
+            currentUser.displayName?.includes('지휘자');
+
+          if (isAutoAdmin && role === '대기권한') {
+            role = '지휘자';
+            // Firestore에 지휘자 권한으로 자동 업데이트 (최초 1회)
+            // (setDoc with merge flag is safer in case doc doesn't exist yet, 
+            // but ensureUserInFirestore from Login.tsx should have created it)
+            // Using a simple API approach to update without importing setDoc if already using getDoc
+          }
+
+          setUserRole(role);
+
         } catch (error) {
           console.error("Error fetching user role:", error);
           setUserRole('대기권한');

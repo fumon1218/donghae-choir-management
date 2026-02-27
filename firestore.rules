@@ -25,6 +25,9 @@ service cloud.firestore {
     match /boards/{document=**} {
       allow read, write: if true;
     }
+    match /board_posts/{document=**} {
+      allow read, write: if true;
+    }
     match /settings/{document=**} {
       allow read, write: if true;
     }

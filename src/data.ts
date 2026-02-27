@@ -10,6 +10,24 @@ export interface Member {
 
 export const members: Member[] = [];
 
+export interface BoardCategory {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+}
+
+export interface BoardPost {
+  id: string;
+  boardId: string;
+  author: string;
+  authorUid: string;
+  content: string;
+  imageUrl?: string;
+  youtubeUrl?: string;
+  createdAt: number;
+}
+
 export interface Hymn {
   month: number;
   week: number;

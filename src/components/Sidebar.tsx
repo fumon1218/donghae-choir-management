@@ -1,18 +1,44 @@
-import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { BoardCategory } from '../data';
 import logoUrl from '../assets/logo.jpg';
+import BoardManager from './BoardManager';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
+  userRole?: string | null;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole }: SidebarProps) {
+  const [boardCategories, setBoardCategories] = useState<BoardCategory[]>([]);
+  const [showBoardManager, setShowBoardManager] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'board_categories'), orderBy('order', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const categories: BoardCategory[] = [];
+      snapshot.forEach((doc) => {
+        categories.push({ id: doc.id, ...doc.data() } as BoardCategory);
+      });
+      setBoardCategories(categories);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const navItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'members', label: '인원 관리', icon: Users },
     { id: 'attendance', label: '출석부', icon: ClipboardCheck },
-    { id: 'board', label: '자유게시판', icon: MessageSquare },
+    ...boardCategories.map(board => ({
+      id: `board_${board.id}`,
+      label: board.name,
+      icon: MessageSquare
+    })),
     { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
@@ -58,6 +84,18 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarPr
             </button>
           );
         })}
+
+        {(userRole === 'admin' || userRole === 'conductor') && (
+          <div className="pt-4 mt-4 border-t border-gray-100">
+            <button
+              onClick={() => setShowBoardManager(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200"
+            >
+              <Settings className="w-5 h-5 text-gray-400" />
+              게시판 관리
+            </button>
+          </div>
+        )}
       </nav>
 
       <div className="p-4 border-t border-gray-100 space-y-2">
@@ -78,6 +116,8 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }: SidebarPr
           로그아웃
         </button>
       </div>
+
+      {showBoardManager && <BoardManager onClose={() => setShowBoardManager(false)} />}
     </aside>
   );
 }

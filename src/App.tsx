@@ -172,8 +172,6 @@ export default function App() {
         return <Members userRole={userRole} userData={userData} />;
       case 'attendance':
         return <Attendance />;
-      case 'board':
-        return <Board />;
       case 'opening-hymns':
         return <OpeningHymns />;
       case 'hymns':
@@ -181,6 +179,10 @@ export default function App() {
       case 'schedule':
         return <Schedule />;
       default:
+        if (activeTab.startsWith('board_')) {
+          const boardId = activeTab.replace('board_', '');
+          return <Board boardId={boardId} userRole={userRole} userData={userData} />;
+        }
         return <Dashboard />;
     }
   };

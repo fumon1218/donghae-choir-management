@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { MessageSquare, Send, Image as ImageIcon, Youtube, Trash2, User, Clock, ExternalLink, X } from 'lucide-react';
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, where, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { BoardPost, BoardCategory } from '../data';
 
 interface Post {
   id: string;
@@ -10,8 +13,15 @@ interface Post {
   createdAt: number;
 }
 
-export default function Board() {
-  const [posts, setPosts] = useState<Post[]>([]);
+interface BoardProps {
+  boardId?: string;
+  userRole?: string | null;
+  userData?: any;
+}
+
+export default function Board({ boardId = 'default', userRole, userData }: BoardProps) {
+  const [posts, setPosts] = useState<BoardPost[]>([]);
+  const [boardName, setBoardName] = useState('게시판');
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -19,44 +29,76 @@ export default function Board() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const savedPosts = localStorage.getItem('choir_board_posts');
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts));
-    }
-  }, []);
+    // Fetch generic board name
+    const fetchBoardInfo = async () => {
+      if (boardId === 'default') {
+        setBoardName('자유게시판');
+        return;
+      }
+      try {
+        const boardDoc = await getDoc(doc(db, 'board_categories', boardId));
+        if (boardDoc.exists()) {
+          setBoardName(boardDoc.data().name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch board category:', err);
+      }
+    };
+    fetchBoardInfo();
 
-  const savePosts = (newPosts: Post[]) => {
-    setPosts(newPosts);
-    localStorage.setItem('choir_board_posts', JSON.stringify(newPosts));
-  };
+    const q = query(
+      collection(db, 'board_posts'),
+      where('boardId', '==', boardId),
+      orderBy('createdAt', 'desc')
+    );
 
-  const handleSubmit = (e: FormEvent) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newPosts: BoardPost[] = [];
+      snapshot.forEach((doc) => {
+        newPosts.push({ id: doc.id, ...doc.data() } as BoardPost);
+      });
+      setPosts(newPosts);
+    });
+
+    return () => unsubscribe();
+  }, [boardId]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      author: '지휘자', // In a real app, this would be the logged-in user's name
-      content,
-      imageUrl: imageUrl.trim() || undefined,
-      youtubeUrl: youtubeUrl.trim() || undefined,
-      createdAt: Date.now(),
-    };
+    try {
+      const newPost = {
+        boardId,
+        author: userData?.name || '익명',
+        authorUid: userData?.uid || 'unknown',
+        content,
+        imageUrl: imageUrl.trim() || undefined,
+        youtubeUrl: youtubeUrl.trim() || undefined,
+        createdAt: Date.now(),
+      };
 
-    const updatedPosts = [newPost, ...posts];
-    savePosts(updatedPosts);
-    
-    // Reset form
-    setContent('');
-    setImageUrl('');
-    setYoutubeUrl('');
-    setShowForm(false);
+      await addDoc(collection(db, 'board_posts'), newPost);
+
+      // Reset form
+      setContent('');
+      setImageUrl('');
+      setYoutubeUrl('');
+      setShowForm(false);
+    } catch (error) {
+      console.error('Error adding post:', error);
+      alert('게시글을 작성하는 중 오류가 발생했습니다.');
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (postId: string) => {
     if (window.confirm('정말 이 게시글을 삭제하시겠습니까?')) {
-      const updatedPosts = posts.filter(p => p.id !== id);
-      savePosts(updatedPosts);
+      try {
+        await deleteDoc(doc(db, 'board_posts', postId));
+      } catch (error) {
+        console.error('Error deleting post:', error);
+        alert('게시글을 삭제하는 중 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -92,13 +134,12 @@ export default function Board() {
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
             <MessageSquare className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">자유게시판</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{boardName}</h1>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${
-            showForm ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${showForm ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
         >
           {showForm ? '취소' : '글쓰기'}
         </button>
@@ -116,7 +157,7 @@ export default function Board() {
                 required
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase ml-1">
@@ -160,7 +201,7 @@ export default function Board() {
                   </div>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase ml-1">
                   <Youtube className="w-3 h-3" />
@@ -207,13 +248,15 @@ export default function Board() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(post.id)}
-                    className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {(post.authorUid === userData?.uid || userRole === 'conductor' || userRole === 'admin') && (
+                    <button
+                      onClick={() => handleDelete(post.id)}
+                      className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap mb-4">

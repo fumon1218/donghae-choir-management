@@ -154,7 +154,7 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
             alert('기본 메뉴 설정이 성공적으로 저장되었습니다.');
         } catch (err) {
             console.error('Error saving menu config:', err);
-            alert('메뉴 설정 저장 중 오류가 발생했습니다.');
+            alert(`메뉴 설정 저장 중 오류가 발생했습니다: ${err.message || err}`);
         }
     };
 

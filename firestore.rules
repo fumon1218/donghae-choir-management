@@ -19,6 +19,18 @@ service cloud.firestore {
     match /hymns/{document=**} {
       allow read, write: if true;
     }
+    match /board_categories/{document=**} {
+      allow read, write: if true;
+    }
+    match /boards/{document=**} {
+      allow read, write: if true;
+    }
+    match /settings/{document=**} {
+      allow read, write: if true;
+    }
+    match /attendance/{document=**} {
+      allow read, write: if true;
+    }
     
     match /{document=**} {
       allow read, write: if false;

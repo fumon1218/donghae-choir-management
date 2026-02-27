@@ -11,11 +11,14 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
   userRole?: string | null;
+  userData?: any;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, userData }: SidebarProps) {
   const [boardCategories, setBoardCategories] = useState<BoardCategory[]>([]);
   const [showBoardManager, setShowBoardManager] = useState(false);
+
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
 
   useEffect(() => {
     const q = query(collection(db, 'board_categories'), orderBy('order', 'asc'));
@@ -85,7 +88,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole }:
           );
         })}
 
-        {(userRole === 'admin' || userRole === 'conductor') && (
+        {isAdmin && (
           <div className="pt-4 mt-4 border-t border-gray-100">
             <button
               onClick={() => setShowBoardManager(true)}
@@ -100,12 +103,16 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole }:
 
       <div className="p-4 border-t border-gray-100 space-y-2">
         <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3 border border-gray-100">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-            지
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden">
+            {userData?.imageUrl ? (
+              <img src={userData.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              (userData?.name || '익').charAt(0)
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">지휘자</p>
-            <p className="text-xs text-gray-500 truncate">관리자 계정</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{userData?.name || '익명'}</p>
+            <p className="text-xs text-gray-500 truncate">{userRole || '일반 대원'}</p>
           </div>
         </div>
         <button

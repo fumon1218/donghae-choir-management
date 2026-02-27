@@ -189,7 +189,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans relative">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={userRole} userData={userData} />
 
       <main className="flex-1 ml-64 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">

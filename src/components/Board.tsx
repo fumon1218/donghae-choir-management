@@ -28,6 +28,8 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
   const [showForm, setShowForm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
+
   useEffect(() => {
     // Fetch generic board name
     const fetchBoardInfo = async () => {
@@ -248,7 +250,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                       </div>
                     </div>
                   </div>
-                  {(post.authorUid === userData?.uid || userRole === 'conductor' || userRole === 'admin') && (
+                  {(post.authorUid === userData?.uid || isAdmin) && (
                     <button
                       onClick={() => handleDelete(post.id)}
                       className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"

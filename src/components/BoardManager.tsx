@@ -23,6 +23,7 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
         { id: 'opening-hymns', defaultLabel: '시작찬송 관리' },
         { id: 'hymns', defaultLabel: '월별 찬송가' },
         { id: 'schedule', defaultLabel: '연습 스케줄' },
+        { id: 'legacy-board', defaultLabel: '자유게시판 (구버전)' },
     ];
 
     // Form states

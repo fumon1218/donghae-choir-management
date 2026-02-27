@@ -69,6 +69,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
+    { id: 'legacy-board', label: '자유게시판 (구버전)', icon: MessageSquare },
   ];
 
   // 설정 파일(menuConfig)을 바탕으로 필터 및 라벨 적용

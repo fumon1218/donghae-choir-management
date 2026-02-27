@@ -14,9 +14,11 @@ import Members from './components/Members';
 import Hymns from './components/Hymns';
 import Schedule from './components/Schedule';
 import Attendance from './components/Attendance';
+import BoardManager from './components/BoardManager';
+import Board from './components/Board';
+import LegacyBoard from './components/LegacyBoard';
 import Login from './components/Login';
 import Join from './components/Join';
-import Board from './components/Board';
 import OpeningHymns from './components/OpeningHymns';
 
 export default function App() {
@@ -182,6 +184,8 @@ export default function App() {
         return <Hymns userRole={userRole} />;
       case 'schedule':
         return <Schedule />;
+      case 'legacy-board':
+        return <LegacyBoard userData={userData} />;
       default:
         if (activeTab.startsWith('board_')) {
           const boardId = activeTab.replace('board_', '');

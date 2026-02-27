@@ -8,62 +8,7 @@ export interface Member {
   imageUrl?: string;
 }
 
-export const members: Member[] = [
-  // Soprano (12)
-  { id: 's1', name: '김소프', part: 'Soprano', role: '파트장' },
-  { id: 's2', name: '이은혜', part: 'Soprano' },
-  { id: 's3', name: '박사랑', part: 'Soprano' },
-  { id: 's4', name: '최믿음', part: 'Soprano' },
-  { id: 's5', name: '정소망', part: 'Soprano' },
-  { id: 's6', name: '강평안', part: 'Soprano' },
-  { id: 's7', name: '조기쁨', part: 'Soprano' },
-  { id: 's8', name: '윤온유', part: 'Soprano' },
-  { id: 's9', name: '장충성', part: 'Soprano' },
-  { id: 's10', name: '임진실', part: 'Soprano' },
-  { id: 's11', name: '한지혜', part: 'Soprano' },
-  { id: 's12', name: '오찬양', part: 'Soprano' },
-  // Alto (10)
-  { id: 'a1', name: '김알토', part: 'Alto', role: '파트장' },
-  { id: 'a2', name: '이화평', part: 'Alto' },
-  { id: 'a3', name: '박자비', part: 'Alto' },
-  { id: 'a4', name: '최양선', part: 'Alto' },
-  { id: 'a5', name: '정겸손', part: 'Alto' },
-  { id: 'a6', name: '강인내', part: 'Alto' },
-  { id: 'a7', name: '조절제', part: 'Alto' },
-  { id: 'a8', name: '윤순종', part: 'Alto' },
-  { id: 'a9', name: '장감사', part: 'Alto' },
-  { id: 'a10', name: '임영광', part: 'Alto' },
-  // Tenor (9)
-  { id: 't1', name: '김테너', part: 'Tenor', role: '파트장' },
-  { id: 't2', name: '이거룩', part: 'Tenor' },
-  { id: 't3', name: '박성결', part: 'Tenor' },
-  { id: 't4', name: '최진리', part: 'Tenor' },
-  { id: 't5', name: '정생명', part: 'Tenor' },
-  { id: 't6', name: '강빛', part: 'Tenor' },
-  { id: 't7', name: '조소금', part: 'Tenor' },
-  { id: 't8', name: '윤반석', part: 'Tenor' },
-  { id: 't9', name: '장구원', part: 'Tenor' },
-  // Bass (10)
-  { id: 'b1', name: '김베이스', part: 'Bass', role: '파트장' },
-  { id: 'b2', name: '이능력', part: 'Bass' },
-  { id: 'b3', name: '박권능', part: 'Bass' },
-  { id: 'b4', name: '최승리', part: 'Bass' },
-  { id: 'b5', name: '정영생', part: 'Bass' },
-  { id: 'b6', name: '강천국', part: 'Bass' },
-  { id: 'b7', name: '조보혈', part: 'Bass' },
-  { id: 'b8', name: '윤십자가', part: 'Bass' },
-  { id: 'b9', name: '장부활', part: 'Bass' },
-  { id: 'b10', name: '임재림', part: 'Bass' },
-  // Orchestra (8)
-  { id: 'o1', name: '김바이올린', part: 'Orchestra', role: '악장' },
-  { id: 'o2', name: '이첼로', part: 'Orchestra' },
-  { id: 'o3', name: '박플룻', part: 'Orchestra' },
-  { id: 'o4', name: '최클라리넷', part: 'Orchestra' },
-  { id: 'o5', name: '정트럼펫', part: 'Orchestra' },
-  { id: 'o6', name: '강팀파니', part: 'Orchestra' },
-  { id: 'o7', name: '조피아노', part: 'Orchestra', role: '반주자' },
-  { id: 'o8', name: '윤오르간', part: 'Orchestra', role: '반주자' },
-];
+export const members: Member[] = [];
 
 export interface Hymn {
   month: number;

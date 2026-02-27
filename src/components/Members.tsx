@@ -13,8 +13,6 @@ export default function Members({ userRole }: MembersProps) {
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
-  const [showInviteToast, setShowInviteToast] = useState(false);
-  const [showFallbackModal, setShowFallbackModal] = useState(false);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -75,61 +73,6 @@ export default function Members({ userRole }: MembersProps) {
     return matchesPart && matchesSearch;
   });
 
-  const handleInvite = async () => {
-    const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=true`;
-
-    // 1. 모바일 기기의 기본 공유하기 (카카오톡, 문자 등) 시도
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: '동해교회 찬양대 초대',
-          text: '동해교회 찬양대 웹 앱에 초대합니다.',
-          url: inviteUrl,
-        });
-        return; // 공유 성공 시 종료
-      } catch (error) {
-        console.log('공유 취소 또는 실패', error);
-      }
-    }
-
-    // 2. 최신 클립보드 API 복사 시도
-    if (navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(inviteUrl);
-        setShowInviteToast(true);
-        setTimeout(() => setShowInviteToast(false), 3000);
-        return;
-      } catch (err) {
-        console.error('Clipboard copy failed:', err);
-      }
-    }
-
-    // 3. 최후의 수단: 구형 브라우저 및 인앱 브라우저 (카카오톡 등) 대비
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = inviteUrl;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-999999px";
-      textArea.style.top = "-999999px";
-      document.body.appendChild(textArea);
-
-      textArea.focus();
-      textArea.select();
-
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-
-      if (successful) {
-        setShowInviteToast(true);
-        setTimeout(() => setShowInviteToast(false), 3000);
-      } else {
-        setShowFallbackModal(true);
-      }
-    } catch (err) {
-      console.error('Fallback copy failed', err);
-      setShowFallbackModal(true);
-    }
-  };
 
   const handleDelete = (member: Member) => {
     if (window.confirm(`${member.name} 대원을 명단에서 삭제하시겠습니까?`)) {
@@ -302,13 +245,6 @@ export default function Members({ userRole }: MembersProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">인원 관리</h1>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button
-            onClick={handleInvite}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
-          >
-            <UserPlus className="w-4 h-4" />
-            초대 링크 복사
-          </button>
           <div className="relative flex-1 sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -324,48 +260,6 @@ export default function Members({ userRole }: MembersProps) {
         </div>
       </div>
 
-      {showInviteToast && (
-        <div className="fixed bottom-8 right-8 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 z-50">
-          <CheckCircle className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-medium">초대 링크가 복사되었습니다!</span>
-        </div>
-      )}
-
-      {showFallbackModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-gray-900">초대 링크 복사</h3>
-                <button
-                  onClick={() => setShowFallbackModal(false)}
-                  className="text-gray-400 hover:text-gray-500 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                현재 브라우저 환경에서 자동 복사를 지원하지 않습니다. 아래 입력창의 <b>주소를 길게 눌러 직접 복사</b>해 주세요.
-              </p>
-              <input
-                type="text"
-                readOnly
-                value={`${window.location.origin}${window.location.pathname}?invite=true`}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="bg-gray-50 px-6 py-4 flex justify-end">
-              <button
-                onClick={() => setShowFallbackModal(false)}
-                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {isAdmin && joinRequests.length > 0 && (

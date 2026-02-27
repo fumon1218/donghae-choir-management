@@ -57,6 +57,10 @@ export default function App() {
           // 기존 Firestore에 권한이 있다면 해당 권한 사용
           if (userSnap.exists()) {
             data = { uid: currentUser.uid, ...userSnap.data() };
+            // 만약 DB에 이름이나 사진이 누락된 경우 구글 계정 정보를 폴백으로 사용
+            if (!data.name) data.name = currentUser.displayName || '';
+            if (!data.imageUrl) data.imageUrl = currentUser.photoURL || '';
+
             if (data?.role) {
               role = data.role;
             }
@@ -64,9 +68,9 @@ export default function App() {
             // Firestore 문서가 아직 없는 경우에도 기본 데이터 설정 (uid 필수!)
             data = {
               uid: currentUser.uid,
-              name: currentUser.displayName || '이름 없음',
+              name: currentUser.displayName || '',
               email: currentUser.email || '',
-              photoURL: currentUser.photoURL || ''
+              imageUrl: currentUser.photoURL || ''
             };
           }
 

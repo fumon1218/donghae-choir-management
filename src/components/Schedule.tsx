@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { schedules as initialSchedules, Schedule as ScheduleType } from '../data';
 import { Clock, MapPin, CalendarDays, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 
-export default function Schedule() {
+interface ScheduleProps {
+  userRole: string | null;
+}
+
+export default function Schedule({ userRole }: ScheduleProps) {
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [schedules, setSchedules] = useState<ScheduleType[]>(() => {
     const saved = localStorage.getItem('choir_schedules');
     return saved ? JSON.parse(saved) : initialSchedules;
@@ -43,31 +48,33 @@ export default function Schedule() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">연습 스케줄</h1>
-        {!isEditing ? (
-          <button
-            onClick={handleStartEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <Edit2 className="w-4 h-4" />
-            스케줄 수정
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
+        {isAdmin && (
+          !isEditing ? (
             <button
-              onClick={handleCancelEdit}
+              onClick={handleStartEdit}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
             >
-              <X className="w-4 h-4" />
-              취소
+              <Edit2 className="w-4 h-4" />
+              스케줄 수정
             </button>
-            <button
-              onClick={handleSaveEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm"
-            >
-              <Save className="w-4 h-4" />
-              저장하기
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                <X className="w-4 h-4" />
+                취소
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                <Save className="w-4 h-4" />
+                저장하기
+              </button>
+            </div>
+          )
         )}
       </div>
 
@@ -82,7 +89,7 @@ export default function Schedule() {
               찬양대 정기 연습 및 파트별 연습 시간표입니다.
             </p>
           </div>
-          {isEditing && (
+          {isAdmin && isEditing && (
             <button
               onClick={handleAddItem}
               className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
@@ -92,7 +99,7 @@ export default function Schedule() {
             </button>
           )}
         </div>
-        
+
         <div className="divide-y divide-gray-100">
           {(isEditing ? editList : schedules).map((schedule, idx) => (
             <div key={idx} className="p-6 hover:bg-gray-50 transition-colors">
@@ -157,7 +164,7 @@ export default function Schedule() {
                       {schedule.day}
                     </span>
                   </div>
-                  
+
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center text-gray-700">
                       <Clock className="w-5 h-5 mr-3 text-gray-400" />
@@ -168,7 +175,7 @@ export default function Schedule() {
                       <span>{schedule.location}</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm:w-64 flex-shrink-0 text-sm text-gray-500 bg-gray-100/50 px-4 py-2 rounded-lg">
                     {schedule.description}
                   </div>

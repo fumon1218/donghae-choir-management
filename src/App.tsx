@@ -192,7 +192,7 @@ export default function App() {
       case 'hymns':
         return <Hymns userRole={userRole} />;
       case 'schedule':
-        return <Schedule />;
+        return <Schedule userRole={userData?.role || null} />;
       case 'legacy-board':
         return <LegacyBoard userData={userData} />;
       default:

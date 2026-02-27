@@ -8,9 +8,10 @@ import logoUrl from '../assets/logo.jpg';
 
 interface JoinProps {
   user?: FirebaseUser | null;
+  onJoinSuccess?: () => void;
 }
 
-export default function Join({ user }: JoinProps) {
+export default function Join({ user, onJoinSuccess }: JoinProps) {
   const [name, setName] = useState(user?.displayName || '');
   const [part, setPart] = useState<Part>('Soprano');
   const [isJoined, setIsJoined] = useState(false);
@@ -32,6 +33,7 @@ export default function Join({ user }: JoinProps) {
         createdAt: serverTimestamp()
       });
       setIsJoined(true);
+      if (onJoinSuccess) onJoinSuccess();
     } catch (error) {
       console.error("Error adding document: ", error);
       alert('가입 신청 중 오류가 발생했습니다. 다시 시도해주세요.');

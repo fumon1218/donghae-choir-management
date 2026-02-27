@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { LogOut, Clock } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -26,15 +26,8 @@ export default function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isInviteMode, setIsInviteMode] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [userData, setUserData] = useState<any>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('invite') === 'true') {
-      setIsInviteMode(true);
-    }
-  }, []);
 
   useEffect(() => {
     // 4초 동안 로딩 상태가 풀리지 않으면 강제 해제합니다. (빠른 화면 진입 보장)
@@ -82,12 +75,26 @@ export default function App() {
             currentUser.displayName?.includes('박선생') ||
             currentUser.displayName?.includes('지휘자');
 
+          let currentRole = role;
           if (isAutoAdmin && role === '대기권한') {
-            role = '지휘자';
+            currentRole = '지휘자';
             if (data) data.role = '지휘자';
           }
 
-          setUserRole(role);
+          let pendingReq = false;
+          // check if they have a pending request if neither auto admin nor existing active local role
+          if (currentRole === '대기권한') {
+            try {
+              const q = query(collection(db, 'join_requests'), where('uid', '==', currentUser.uid), where('status', '==', 'pending'));
+              const reqSnap = await getDocs(q);
+              pendingReq = !reqSnap.empty;
+            } catch (e) {
+              console.error('Error checking join requests', e);
+            }
+          }
+
+          setHasPendingRequest(pendingReq);
+          setUserRole(currentRole);
           setUserData(data);
 
         } catch (error) {
@@ -99,6 +106,7 @@ export default function App() {
       } else {
         setUserRole(null);
         setUserData(null);
+        setHasPendingRequest(false);
         setLoading(false);
       }
     });
@@ -135,13 +143,14 @@ export default function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // 2. 로그인 상태에서 초대 링크 파라미터가 있다면 가입 화면 표시
-  if (isInviteMode) {
-    return <Join user={user} />;
-  }
-
-  // 3. 미승인 회원(대기권한) 처리 로직
+  // 2. 미승인 회원(대기권한) 처리 로직
   if (userRole === '대기권한') {
+    // 신청 내역이 없다면 (루트로 들어왔든 접속했든) 반드시 가입 폼 표시
+    if (!hasPendingRequest) {
+      return <Join user={user} onJoinSuccess={() => setHasPendingRequest(true)} />;
+    }
+
+    // 신청 내역이 있으면 승인 대기 화면
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">

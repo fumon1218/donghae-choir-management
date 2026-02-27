@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
 import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface MembersProps {
@@ -123,7 +123,27 @@ export default function Members({ userRole, userData }: MembersProps) {
         status: 'approved'
       });
 
-      // 2. Add to local members (in a real app this would also be synced to a members collection in Firestore)
+      // 2. Update Firestore users collection to grant actual access
+      if (request.uid) {
+        try {
+          await updateDoc(doc(db, 'users', request.uid), {
+            role: '일반대원',
+            part: request.part,
+            name: request.name
+          });
+        } catch (e) {
+          // Fallback if users document doesn't exist yet
+          await setDoc(doc(db, 'users', request.uid), {
+            role: '일반대원',
+            part: request.part,
+            name: request.name,
+            email: request.email || '',
+            imageUrl: ''
+          });
+        }
+      }
+
+      // 3. Add to local members (in a real app this would also be synced to a members collection in Firestore)
       const newMember: Member = {
         id: `extra-${Date.now()}`,
         name: request.name,

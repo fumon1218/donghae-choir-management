@@ -104,14 +104,14 @@ export default function LegacyBoard({ userData }: { userData?: any }) {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 animate-in fade-in slide-in-from-top-4 duration-300">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="나누고 싶은 이야기를 적어주세요..."
-                className="w-full min-h-[120px] p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm resize-none"
+                className="w-full min-h-[100px] sm:min-h-[120px] p-3 sm:p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm sm:text-base resize-none"
                 required
               />
             </div>
@@ -188,21 +188,21 @@ export default function LegacyBoard({ userData }: { userData?: any }) {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {posts.length > 0 ? (
           posts.map((post) => (
             <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                      <User className="w-5 h-5" />
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-start mb-3 sm:mb-4">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shrink-0">
+                      <User className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">{post.author}</h3>
-                      <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(post.createdAt)}
+                    <div className="min-w-0">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">{post.author}</h3>
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-400 mt-0.5">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{formatDate(post.createdAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -215,13 +215,13 @@ export default function LegacyBoard({ userData }: { userData?: any }) {
                   </button>
                 </div>
 
-                <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap mb-4">
+                <div className="text-gray-800 text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4 font-normal">
                   {post.content}
                 </div>
 
                 {post.imageUrl && (
                   <div className="mb-4 rounded-xl overflow-hidden border border-gray-100">
-                    <img src={post.imageUrl} alt="Post content" className="w-full max-h-[500px] object-contain bg-gray-50" />
+                    <img src={post.imageUrl} alt="Post content" className="w-full max-h-64 sm:max-h-[500px] object-contain bg-gray-50" />
                   </div>
                 )}
 

@@ -61,8 +61,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
 
     const q = query(
       collection(db, 'board_posts'),
-      where('boardId', '==', boardId),
-      orderBy('createdAt', 'desc')
+      where('boardId', '==', boardId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -70,7 +69,12 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
       snapshot.forEach((doc) => {
         newPosts.push({ id: doc.id, ...doc.data() } as BoardPost);
       });
+      // Sort newest first
+      newPosts.sort((a, b) => b.createdAt - a.createdAt);
       setPosts(newPosts);
+    }, (error) => {
+      console.error('Error fetching board posts:', error);
+      alert(`게시판 데이터를 불러오지 못했습니다: ${error.message}`);
     });
 
     return () => unsubscribe();

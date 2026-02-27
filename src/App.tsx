@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import { LogOut, Clock } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
@@ -85,6 +86,36 @@ export default function App() {
   // 2. 로그인 상태에서 초대 링크 파라미터가 있다면 가입 화면 표시
   if (isInviteMode) {
     return <Join user={user} />;
+  }
+
+  // 3. 미승인 회원(대기권한) 처리 로직
+  if (userRole === '대기권한') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-6">
+              <Clock className="w-12 h-12" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-extrabold text-gray-900">승인 대기 중</h2>
+          <p className="mt-4 text-gray-600">
+            {user.displayName || user.email}님, 환영합니다!<br />
+            현재 <b>지휘자님의 가입 승인</b>을 기다리고 있습니다.<br />
+            승인이 완료되면 앱을 이용하실 수 있습니다.
+          </p>
+          <div className="mt-8">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const renderContent = () => {

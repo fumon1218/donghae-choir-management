@@ -149,7 +149,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
                 {practiceDates.map(pd => (
                   <th key={pd.date} className="p-4 text-center min-w-[80px]">
                     <div className="text-xs font-semibold text-gray-500 uppercase">
-                      {pd.dayName === 'Sun' ? '일' : pd.dayName === 'Wed' ? '수' : '토'}
+                      {pd.dayName === 'Sun' ? '일' : '수'}
                     </div>
                     <div className="text-sm font-bold text-gray-900">{pd.formattedDate}</div>
                   </th>

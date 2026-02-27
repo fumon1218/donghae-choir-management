@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
-import { LogOut, Clock } from 'lucide-react';
+import { LogOut, Clock, Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
@@ -28,6 +28,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [userData, setUserData] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // 4초 동안 로딩 상태가 풀리지 않으면 강제 해제합니다. (빠른 화면 진입 보장)
@@ -125,6 +126,7 @@ export default function App() {
     try {
       await signOut(auth);
       setActiveTab('dashboard');
+      setIsMobileMenuOpen(false);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -206,17 +208,46 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans relative">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={userRole} userData={userData} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setIsMobileMenuOpen(false);
+        }}
+        onLogout={handleLogout}
+        userRole={userRole}
+        userData={userData}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
 
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          {renderContent()}
+      <div className="flex-1 flex flex-col min-w-0 md:ml-64 relative min-h-screen">
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold text-gray-900 tracking-tight">
+              동해교회
+              <span className="text-blue-600 ml-1">찬양대</span>
+            </span>
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 -mr-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
         </div>
-      </main>
 
-      {/* Version Information */}
-      <div className="fixed bottom-4 right-4 text-xs font-medium text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 pointer-events-none z-50">
-        v1.0.0
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto pb-16 md:pb-0">
+            {renderContent()}
+          </div>
+        </main>
+
+        {/* Version Information */}
+        <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-medium text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 pointer-events-none z-[100]">
+          v1.0.0
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
-import { MessageSquare, Send, Image as ImageIcon, Youtube, Trash2, User, Clock, ExternalLink, X } from 'lucide-react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, where, getDoc } from 'firebase/firestore';
+import { MessageSquare, Send, Image as ImageIcon, Youtube, Trash2, User, Clock, ExternalLink, X, Edit2 } from 'lucide-react';
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, where, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BoardPost, BoardCategory } from '../data';
 
@@ -27,6 +27,13 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [showForm, setShowForm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit states
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editYoutubeUrl, setEditYoutubeUrl] = useState('');
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
 
@@ -104,6 +111,37 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
     }
   };
 
+  const startEditing = (post: BoardPost) => {
+    setEditingPostId(post.id);
+    setEditContent(post.content);
+    setEditImageUrl(post.imageUrl || '');
+    setEditYoutubeUrl(post.youtubeUrl || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingPostId(null);
+    setEditContent('');
+    setEditImageUrl('');
+    setEditYoutubeUrl('');
+  };
+
+  const handleUpdate = async (e: FormEvent, postId: string) => {
+    e.preventDefault();
+    if (!editContent.trim()) return;
+
+    try {
+      await updateDoc(doc(db, 'board_posts', postId), {
+        content: editContent,
+        imageUrl: editImageUrl.trim() || null,
+        youtubeUrl: editYoutubeUrl.trim() || null,
+      });
+      cancelEditing();
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('게시글을 수정하는 중 오류가 발생했습니다.');
+    }
+  };
+
   const getYoutubeEmbedUrl = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
@@ -118,12 +156,16 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
     return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, isEditing = false) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageUrl(reader.result as string);
+        if (isEditing) {
+          setEditImageUrl(reader.result as string);
+        } else {
+          setImageUrl(reader.result as string);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -185,7 +227,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    onChange={(e) => handleImageUpload(e, false)}
                     accept="image/*"
                     className="hidden"
                   />
@@ -250,51 +292,149 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                       </div>
                     </div>
                   </div>
-                  {(post.authorUid === userData?.uid || isAdmin) && (
-                    <button
-                      onClick={() => handleDelete(post.id)}
-                      className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap mb-4">
-                  {post.content}
-                </div>
-
-                {post.imageUrl && (
-                  <div className="mb-4 rounded-xl overflow-hidden border border-gray-100">
-                    <img src={post.imageUrl} alt="Post content" className="w-full max-h-[500px] object-contain bg-gray-50" />
-                  </div>
-                )}
-
-                {post.youtubeUrl && (
-                  <div className="mb-4">
-                    {getYoutubeEmbedUrl(post.youtubeUrl) ? (
-                      <div className="aspect-video rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                        <iframe
-                          src={getYoutubeEmbedUrl(post.youtubeUrl)!}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        ></iframe>
-                      </div>
-                    ) : (
-                      <a
-                        href={post.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-xs font-medium border border-red-100 hover:bg-red-100 transition-colors"
+                  <div className="flex gap-1">
+                    {post.authorUid === userData?.uid && (
+                      <button
+                        onClick={() => startEditing(post)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="수정"
                       >
-                        <Youtube className="w-4 h-4" />
-                        유튜브 링크 열기
-                        <ExternalLink className="w-3 h-3 ml-auto" />
-                      </a>
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {(post.authorUid === userData?.uid || isAdmin) && (
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
+                </div>
+
+                {editingPostId === post.id ? (
+                  <form onSubmit={(e) => handleUpdate(e, post.id)} className="space-y-4 bg-gray-50 p-4 border border-gray-200 rounded-xl mt-4">
+                    <div>
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm resize-none"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase ml-1">
+                          <ImageIcon className="w-3 h-3" />
+                          이미지 첨부
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={editImageUrl.startsWith('data:') ? '이미지 파일 선택됨' : editImageUrl}
+                            onChange={(e) => setEditImageUrl(e.target.value)}
+                            placeholder="이미지 URL 주소"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            disabled={editImageUrl.startsWith('data:')}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => editFileInputRef.current?.click()}
+                            className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium hover:bg-gray-50"
+                          >
+                            파일 선택
+                          </button>
+                          <input
+                            type="file"
+                            ref={editFileInputRef}
+                            onChange={(e) => handleImageUpload(e, true)}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                        </div>
+                        {editImageUrl && (
+                          <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 mt-2">
+                            <img src={editImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setEditImageUrl('')}
+                              className="absolute top-0 right-0 bg-black/50 text-white p-1 hover:bg-black/70"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase ml-1">
+                          <Youtube className="w-3 h-3" />
+                          유튜브 링크
+                        </label>
+                        <input
+                          type="text"
+                          value={editYoutubeUrl}
+                          onChange={(e) => setEditYoutubeUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={cancelEditing}
+                        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-50"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-sm text-sm"
+                      >
+                        수정 완료
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap mb-4">
+                      {post.content}
+                    </div>
+
+                    {post.imageUrl && (
+                      <div className="mb-4 rounded-xl overflow-hidden border border-gray-100">
+                        <img src={post.imageUrl} alt="Post content" className="w-full max-h-[500px] object-contain bg-gray-50" />
+                      </div>
+                    )}
+
+                    {post.youtubeUrl && (
+                      <div className="mb-4">
+                        {getYoutubeEmbedUrl(post.youtubeUrl) ? (
+                          <div className="aspect-video rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                            <iframe
+                              src={getYoutubeEmbedUrl(post.youtubeUrl)!}
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            ></iframe>
+                          </div>
+                        ) : (
+                          <a
+                            href={post.youtubeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-xs font-medium border border-red-100 hover:bg-red-100 transition-colors"
+                          >
+                            <Youtube className="w-4 h-4" />
+                            유튜브 링크 열기
+                            <ExternalLink className="w-3 h-3 ml-auto" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

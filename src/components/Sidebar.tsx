@@ -19,12 +19,13 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
   const [showBoardManager, setShowBoardManager] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState('');
+  const [menuConfig, setMenuConfig] = useState<Record<string, { label: string; visible: boolean }>>({});
 
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
 
   useEffect(() => {
     const q = query(collection(db, 'board_categories'), orderBy('order', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeBoards = onSnapshot(q, (snapshot) => {
       const categories: BoardCategory[] = [];
       snapshot.forEach((doc) => {
         categories.push({ id: doc.id, ...doc.data() } as BoardCategory);
@@ -32,7 +33,18 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
       setBoardCategories(categories);
     });
 
-    return () => unsubscribe();
+    const unsubscribeMenu = onSnapshot(doc(db, 'settings', 'menu_config'), (docSnap) => {
+      if (docSnap.exists()) {
+        setMenuConfig(docSnap.data() as Record<string, { label: string; visible: boolean }>);
+      } else {
+        setMenuConfig({});
+      }
+    });
+
+    return () => {
+      unsubscribeBoards();
+      unsubscribeMenu();
+    }
   }, []);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -50,18 +62,31 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     }
   };
 
-  const navItems = [
+  const baseNavItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'members', label: '인원 관리', icon: Users },
     { id: 'attendance', label: '출석부', icon: ClipboardCheck },
-    ...boardCategories.map(board => ({
+    { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
+    { id: 'hymns', label: '월별 찬송가', icon: Music },
+    { id: 'schedule', label: '연습 스케줄', icon: Calendar },
+  ];
+
+  // 설정 파일(menuConfig)을 바탕으로 필터 및 라벨 적용
+  const configuredBaseItems = baseNavItems
+    .filter(item => menuConfig[item.id]?.visible !== false) // 기본값은 표시(true)
+    .map(item => ({
+      ...item,
+      label: menuConfig[item.id]?.label || item.label // 설정된 이름이 있으면 우선 사용
+    }));
+
+  const navItems = [
+    ...configuredBaseItems.slice(0, 3), // 대시보드, 인원, 출석부 삽입
+    ...boardCategories.map(board => ({    // 게시판(동적) 삽입
       id: `board_${board.id}`,
       label: board.name,
       icon: MessageSquare
     })),
-    { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
-    { id: 'hymns', label: '월별 찬송가', icon: Music },
-    { id: 'schedule', label: '연습 스케줄', icon: Calendar },
+    ...configuredBaseItems.slice(3), // 나머지 (찬송, 스케줄 등) 삽입
   ];
 
   return (

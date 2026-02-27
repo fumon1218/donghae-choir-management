@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
-import { MessageSquare, Send, Image as ImageIcon, Youtube, Trash2, User, Clock, ExternalLink, X, Edit2, MessageCircle } from 'lucide-react';
+import { MessageSquare, Send, Image as ImageIcon, Youtube, Trash2, User, Clock, ExternalLink, X, Edit2, MessageCircle, Smile, ImagePlus } from 'lucide-react';
 import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, where, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { BoardPost, BoardCategory, Comment } from '../data';
@@ -38,6 +38,11 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
   // Comment states
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [commentImageUrl, setCommentImageUrl] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null); // postId of the post showing picker
+  const commentFileInputRef = useRef<HTMLInputElement>(null);
+
+  const EMOJI_LIST = ['😀', '😂', '🥰', '😍', '😎', '🤔', '👍', '👏', '🙏', '🎉', '❤️', '🔥', '✨', '💯', '✅', '👌', '🙌', '💪'];
 
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
 
@@ -157,7 +162,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
 
   const handleAddComment = async (postId: string, e?: FormEvent) => {
     if (e) e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && !commentImageUrl) return;
 
     try {
       const newComment: Comment = {
@@ -168,35 +173,44 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
         createdAt: Date.now(),
       };
 
+      if (commentImageUrl) {
+        newComment.imageUrl = commentImageUrl;
+      }
+
       await updateDoc(doc(db, 'board_posts', postId), {
         comments: arrayUnion(newComment)
       });
 
       setCommentText('');
+      setCommentImageUrl('');
       setCommentingPostId(null);
-    } catch (error) {
+      setShowEmojiPicker(null);
+    } catch (error: any) {
       console.error('Error adding comment:', error);
-      alert('댓글을 작성하는 중 오류가 발생했습니다.');
+      alert(`댓글을 작성하는 중 오류가 발생했습니다: ${error.message || error}`);
     }
   };
 
-  const handleAddEmojiComment = async (postId: string, emoji: string) => {
-    try {
-      const newComment: Comment = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        author: userData?.name || '익명',
-        authorUid: userData?.uid || 'unknown',
-        content: emoji,
-        createdAt: Date.now(),
-      };
+  const handleEmojiClick = (emoji: string) => {
+    setCommentText(prev => prev + emoji);
+  };
 
-      await updateDoc(doc(db, 'board_posts', postId), {
-        comments: arrayUnion(newComment)
-      });
-    } catch (error) {
-      console.error('Error adding emoji comment:', error);
-      alert('댓글을 작성하는 중 오류가 발생했습니다.');
+  const handleCommentImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCommentImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const cancelComment = () => {
+    setCommentingPostId(null);
+    setCommentText('');
+    setCommentImageUrl('');
+    setShowEmojiPicker(null);
   };
 
   const handleDeleteComment = async (postId: string, comment: Comment) => {
@@ -515,7 +529,14 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                         {post.comments.map(comment => (
                           <div key={comment.id} className="flex gap-2 text-sm group">
                             <div className="font-bold text-gray-900 whitespace-nowrap">{comment.author}</div>
-                            <div className="text-gray-700 break-words flex-1">{comment.content}</div>
+                            <div className="flex-1 flex flex-col gap-1">
+                              {comment.content && <div className="text-gray-700 break-words leading-relaxed">{comment.content}</div>}
+                              {comment.imageUrl && (
+                                <div className="mt-1 rounded-lg overflow-hidden border border-gray-100 max-w-sm">
+                                  <img src={comment.imageUrl} alt="Comment attachment" className="w-full max-h-48 object-contain bg-gray-50" />
+                                </div>
+                              )}
+                            </div>
                             <div className="text-gray-400 text-xs whitespace-nowrap hidden sm:block">{formatDate(comment.createdAt)}</div>
                             {(comment.authorUid === userData?.uid || isAdmin) && (
                               <button
@@ -532,39 +553,100 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                     )}
 
                     {commentingPostId === post.id ? (
-                      <form onSubmit={(e) => handleAddComment(post.id, e)} className="mt-3">
-                        <div className="flex gap-2 mb-2">
-                          <button type="button" onClick={() => handleAddEmojiComment(post.id, '❤️')} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-lg transition-colors border border-gray-100">❤️</button>
-                          <button type="button" onClick={() => handleAddEmojiComment(post.id, '😂')} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-lg transition-colors border border-gray-100">😂</button>
-                          <button type="button" onClick={() => handleAddEmojiComment(post.id, '✅')} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-lg transition-colors border border-gray-100">✅</button>
-                          <button type="button" onClick={() => handleAddEmojiComment(post.id, '👌')} className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-full text-lg transition-colors border border-gray-100">👌</button>
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="댓글을 입력하세요..."
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50"
-                            autoFocus
-                          />
-                          <button
-                            type="button"
-                            onClick={() => { setCommentingPostId(null); setCommentText(''); }}
-                            className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={!commentText.trim()}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            등록
-                          </button>
-                        </div>
-                      </form>
+                      <div className="mt-3 relative">
+                        <form onSubmit={(e) => handleAddComment(post.id, e)} className="flex flex-col gap-2 relative">
+                          {/* Image Preview */}
+                          {commentImageUrl && (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                              <img src={commentImageUrl} alt="Comment Preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setCommentImageUrl('')}
+                                className="absolute top-0 right-0 bg-black/50 text-white p-1 hover:bg-black/70"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 items-end">
+                            {/* Emoji Picker Popover */}
+                            {showEmojiPicker === post.id && (
+                              <div className="absolute bottom-[100%] left-0 mb-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 z-10">
+                                {EMOJI_LIST.map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => handleEmojiClick(emoji)}
+                                    className="text-xl hover:bg-gray-100 p-1.5 rounded-lg transition-colors flex items-center justify-center"
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                                <div className="col-span-6 flex justify-end mt-1 pt-2 border-t border-gray-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowEmojiPicker(null)}
+                                    className="text-xs text-gray-500 font-medium hover:text-gray-700"
+                                  >
+                                    닫기
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex-1 flex bg-gray-50 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
+                              <button
+                                type="button"
+                                onClick={() => setShowEmojiPicker(prev => prev === post.id ? null : post.id)}
+                                className="px-3 py-2 text-gray-400 hover:text-blue-500 transition-colors flex items-center justify-center"
+                                title="이모지 선택"
+                              >
+                                <Smile className="w-5 h-5" />
+                              </button>
+                              <input
+                                type="text"
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                placeholder="댓글을 입력하세요..."
+                                className="flex-1 px-1 py-3 text-sm focus:outline-none bg-transparent"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => commentFileInputRef.current?.click()}
+                                className="px-3 py-2 text-gray-400 hover:text-blue-500 transition-colors flex items-center justify-center border-l border-gray-200"
+                                title="사진 첨부"
+                              >
+                                <ImagePlus className="w-5 h-5" />
+                              </button>
+                              <input
+                                type="file"
+                                ref={commentFileInputRef}
+                                onChange={handleCommentImageUpload}
+                                accept="image/*"
+                                className="hidden"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={cancelComment}
+                              className="px-3 py-3 text-gray-500 hover:text-gray-700 text-sm font-medium whitespace-nowrap"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={!commentText.trim() && !commentImageUrl}
+                              className="px-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+                            >
+                              <Send className="w-4 h-4" />
+                              <span className="hidden sm:inline">등록</span>
+                            </button>
+                          </div>
+                        </form>
+                      </div>
                     ) : (
                       <button
                         onClick={() => setCommentingPostId(post.id)}

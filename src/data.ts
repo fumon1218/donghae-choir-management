@@ -22,6 +22,7 @@ export interface Comment {
   author: string;
   authorUid: string;
   content: string;
+  imageUrl?: string;
   createdAt: number;
 }
 

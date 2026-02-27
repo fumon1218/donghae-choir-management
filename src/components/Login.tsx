@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User, Lock, AlertCircle, Mail, Loader2 } from 'lucide-react';
@@ -31,25 +31,6 @@ export default function Login({ onLogin }: LoginProps) {
       });
     }
   };
-
-  useEffect(() => {
-    const checkRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          setIsLoading(true);
-          await ensureUserInFirestore(result.user.uid, result.user.email, result.user.displayName, result.user.photoURL);
-          onLogin();
-        }
-      } catch (err: any) {
-        console.error('Google login redirect error:', err);
-        setError('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkRedirectResult();
-  }, [onLogin]);
 
   const handleEmailAuth = async (e: FormEvent) => {
     e.preventDefault();
@@ -89,10 +70,17 @@ export default function Login({ onLogin }: LoginProps) {
     setIsLoading(true);
     setError('');
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      await ensureUserInFirestore(result.user.uid, result.user.email, result.user.displayName, result.user.photoURL);
+      onLogin();
     } catch (err: any) {
       console.error('Google login error:', err);
-      setError('로그인 페이지로 이동하는 중 오류가 발생했습니다.');
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
+        setError('팝업이 차단되었거나 창이 닫혔습니다. [설정]에서 팝업 차단을 해제하거나 이메일로 로그인해주세요.');
+      } else {
+        setError('구글 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    } finally {
       setIsLoading(false);
     }
   };

@@ -131,15 +131,20 @@ export default function Members({ userRole, userData }: MembersProps) {
             part: request.part,
             name: request.name
           });
-        } catch (e) {
-          // Fallback if users document doesn't exist yet
-          await setDoc(doc(db, 'users', request.uid), {
-            role: '일반대원',
-            part: request.part,
-            name: request.name,
-            email: request.email || '',
-            imageUrl: ''
-          });
+        } catch (e: any) {
+          try {
+            // Fallback if users document doesn't exist yet
+            await setDoc(doc(db, 'users', request.uid), {
+              role: '일반대원',
+              part: request.part,
+              name: request.name,
+              email: request.email || '',
+              imageUrl: ''
+            });
+          } catch (setErr: any) {
+            console.error("SetDoc permission error", setErr);
+            throw new Error(`Firebase 데이터베이스 권한 오류: ${setErr.message}\n(안내해 드린 Firestore 규칙이 아직 적용되지 않았거나 잘못 입력되었습니다.)`);
+          }
         }
       }
 
@@ -156,9 +161,9 @@ export default function Members({ userRole, userData }: MembersProps) {
 
       setAllMembers(prev => [...prev, newMember]);
       alert(`${request.name} 대원의 가입이 승인되었습니다.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving request:', error);
-      alert('승인 처리 중 오류가 발생했습니다.');
+      alert(`승인 처리 중 오류가 발생했습니다.\n${error.message || error}`);
     }
   };
 

@@ -98,12 +98,8 @@ export default function Login({ onLogin }: LoginProps) {
           />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 leading-tight">
-          동해교회 찬양대<br />
-          <span className="text-xl font-bold text-blue-600">Choir Manager</span>
+          동해교회 찬양대
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          지휘자 전용 관리 시스템 로그인
-        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

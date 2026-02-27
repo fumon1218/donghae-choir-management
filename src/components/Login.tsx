@@ -19,16 +19,26 @@ export default function Login({ onLogin }: LoginProps) {
 
   // Common function to register a new user in Firestore
   const ensureUserInFirestore = async (uid: string, userEmail: string | null, userName: string | null, photoURL: string | null) => {
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        name: userName || '이름 없음',
-        email: userEmail || '',
-        photoURL: photoURL || '',
-        role: '대기권한',
-        createdAt: new Date()
-      });
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userSnap: any = await Promise.race([
+        getDoc(userRef),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('firestore_timeout')), 4000))
+      ]);
+      if (!userSnap.exists()) {
+        await Promise.race([
+          setDoc(userRef, {
+            name: userName || '이름 없음',
+            email: userEmail || '',
+            photoURL: photoURL || '',
+            role: '대기권한',
+            createdAt: new Date()
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('firestore_timeout')), 4000))
+        ]);
+      }
+    } catch (err) {
+      console.warn('Firestore connection slow, skipping ensureUserInFirestore block to unfreeze UI:', err);
     }
   };
 
@@ -42,16 +52,24 @@ export default function Login({ onLogin }: LoginProps) {
         if (!name.trim()) {
           throw new Error('이름을 입력해주세요.');
         }
-        const result = await createUserWithEmailAndPassword(auth, email, password);
+        const result: any = await Promise.race([
+          createUserWithEmailAndPassword(auth, email, password),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
+        ]);
         await ensureUserInFirestore(result.user.uid, result.user.email, name, null);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await Promise.race([
+          signInWithEmailAndPassword(auth, email, password),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
+        ]);
       }
       onLogin();
     } catch (err: any) {
       console.error('Email auth error:', err);
       if (err.message === '이름을 입력해주세요.') {
         setError(err.message);
+      } else if (err.message === 'auth_timeout') {
+        setError('서버 응답이 지연되고 있습니다. 네트워크 상태를 확인하시거나 잠시 후 다시 시도해주세요.');
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('이메일 또는 비밀번호가 일치하지 않습니다.');
       } else if (err.code === 'auth/email-already-in-use') {

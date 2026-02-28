@@ -45,10 +45,10 @@ export default function Members({ userRole, userData }: MembersProps) {
 
         memberList.push({
           id: doc.id,
-          name: data.name || '',
-          part: data.part || 'Orchestra',
+          name: data.name || data.displayName || '이름 없음',
+          part: (data.part || 'Orchestra') as Part,
           role: data.role || '일반대원',
-          imageUrl: data.imageUrl
+          imageUrl: data.imageUrl || data.photoURL
         } as Member);
       });
       setAllMembers(memberList);

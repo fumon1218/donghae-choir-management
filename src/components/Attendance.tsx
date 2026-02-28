@@ -39,13 +39,22 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   useEffect(() => {
     const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Member[];
+      const usersData: Member[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        // '대기권한' 사용자는 출석부 명단에서 제외 (Members.tsx와 동일한 규칙)
+        if (data.role === '대기권한') return;
 
-      // Filter out deleted or invalid members if needed
-      // For now, any user in the 'users' collection is a member
+        usersData.push({
+          id: doc.id,
+          name: data.name || data.displayName || '이름 없음',
+          part: (data.part || 'Orchestra') as Part,
+          role: data.role || '일반대원',
+          imageUrl: data.imageUrl || data.photoURL
+        });
+      });
+
+      // 이름순으로 정렬 (이름이 없는 경우 '이름 없음'이 되므로 안전함)
       setAllMembers(usersData.sort((a, b) => a.name.localeCompare(b.name)));
     });
 

@@ -45,7 +45,7 @@ export default function Hymns({ userRole }: HymnsProps) {
     const otherMonthsHymns = allHymns.filter(h => h.month !== currentMonth);
     const updatedHymns = [...otherMonthsHymns, ...editHymns].sort((a, b) => {
       if (a.month !== b.month) return a.month - b.month;
-      return a.week - b.week;
+      return a.date.localeCompare(b.date);
     });
 
     setAllHymns(updatedHymns);
@@ -60,8 +60,11 @@ export default function Hymns({ userRole }: HymnsProps) {
   };
 
   const handleAddHymn = () => {
-    const nextWeek = editHymns.length > 0 ? Math.max(...editHymns.map(h => h.week)) + 1 : 1;
-    setEditHymns([...editHymns, { month: currentMonth, week: nextWeek, title: '', composer: '' }]);
+    // 해당 월의 1일로 기본값 설정 (YYYY-MM-DD)
+    const year = new Date().getFullYear();
+    const monthStr = currentMonth.toString().padStart(2, '0');
+    const defaultDate = `${year}-${monthStr}-01`;
+    setEditHymns([...editHymns, { month: currentMonth, date: defaultDate, title: '', composer: '' }]);
   };
 
   const handleDeleteHymn = (index: number) => {
@@ -229,7 +232,7 @@ export default function Hymns({ userRole }: HymnsProps) {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">주차</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">날짜</th>
                   <th className="p-4 text-xs font-semibold text-gray-500">제목 및 작곡</th>
                   <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">악보</th>
                 </tr>
@@ -238,8 +241,8 @@ export default function Hymns({ userRole }: HymnsProps) {
                 {currentMonthHymns.map((hymn, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-50 text-blue-600 font-bold text-sm rounded-lg border border-blue-100">
-                        {hymn.week}주
+                      <span className="inline-flex items-center justify-center px-2 py-1 bg-blue-50 text-blue-600 font-bold text-xs rounded-lg border border-blue-100 whitespace-nowrap">
+                        {hymn.date ? hymn.date.split('-').slice(1).join('.') : '-'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -274,12 +277,12 @@ export default function Hymns({ userRole }: HymnsProps) {
                 <div key={idx} className="p-6 flex items-center hover:bg-gray-50 transition-colors">
                   {isEditing ? (
                     <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <div className="w-20 flex-shrink-0">
-                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">주차</label>
+                      <div className="w-32 flex-shrink-0">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">날짜</label>
                         <input
-                          type="number"
-                          value={hymn.week}
-                          onChange={(e) => handleUpdateHymn(idx, 'week', parseInt(e.target.value) || 0)}
+                          type="date"
+                          value={hymn.date}
+                          onChange={(e) => handleUpdateHymn(idx, 'date', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                       </div>
@@ -338,8 +341,8 @@ export default function Hymns({ userRole }: HymnsProps) {
                     </div>
                   ) : (
                     <>
-                      <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold text-lg border border-blue-100">
-                        {hymn.week}주
+                      <div className="flex-shrink-0 px-2 py-1.5 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold text-sm border border-blue-100 min-w-[3.5rem]">
+                        {hymn.date ? hymn.date.split('-').slice(1).join('.') : '-'}
                       </div>
                       <div className="ml-6 flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

@@ -40,7 +40,7 @@ export interface BoardPost {
 
 export interface Hymn {
   month: number;
-  week: number;
+  date: string;
   title: string;
   composer: string;
   scoreUrl?: string;

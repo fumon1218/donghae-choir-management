@@ -455,18 +455,32 @@ export default function Members({ userRole, userData }: MembersProps) {
       </div>
 
       {selectedMember && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 relative">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setSelectedMember(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
               <button
-                onClick={() => handleDelete(selectedMember)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(selectedMember);
+                }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-rose-500 hover:bg-rose-50 hover:text-rose-600 backdrop-blur shadow-sm transition-colors"
                 title="삭제"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setSelectedMember(null)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedMember(null);
+                }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-gray-500 hover:bg-gray-100 backdrop-blur shadow-sm transition-colors"
               >
                 <X className="w-5 h-5" />

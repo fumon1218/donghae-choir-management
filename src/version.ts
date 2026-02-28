@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.2.8';
-export const UPDATE_SUMMARY = '회원 탈퇴(계정 및 정보 영구 삭제) 기능 추가';
+export const APP_VERSION = 'v1.2.9';
+export const UPDATE_SUMMARY = '인원 관리: 관리자 전용 명단 왼쪽 스와이프 삭제 기능 추가';

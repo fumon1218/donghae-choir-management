@@ -1,8 +1,9 @@
 import { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor, Trash } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface MembersProps {
   userRole: string | null;
@@ -362,38 +363,63 @@ export default function Members({ userRole, userData }: MembersProps) {
           {isMobileView ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredMembers.map((member) => (
-                <div
-                  key={member.id}
-                  onClick={() => isAdmin && setSelectedMember(member)}
-                  className={`flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-gray-50/50 gap-4 group ${isAdmin ? 'cursor-pointer' : ''}`}
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="relative">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
-                        {member.imageUrl ? (
-                          <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="h-5 w-5" />
+                <div key={member.id} className="relative overflow-hidden rounded-xl">
+                  {/* Background Delete Button (Admin only) */}
+                  {isAdmin && (
+                    <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-6">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(member);
+                        }}
+                        className="flex flex-col items-center gap-1 text-white font-bold"
+                      >
+                        <Trash2 className="w-6 h-6" />
+                        <span className="text-[10px]">탈퇴 처리</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <motion.div
+                    drag={isAdmin ? "x" : false}
+                    dragConstraints={{ left: -100, right: 0 }}
+                    dragElastic={0.1}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x < -80) {
+                        // Keep open or trigger? The user said "reveal button"
+                      }
+                    }}
+                    onClick={() => isAdmin && setSelectedMember(member)}
+                    className={`relative z-10 flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-white gap-4 group ${isAdmin ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="relative">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                          {member.imageUrl ? (
+                            <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="h-5 w-5" />
+                          )}
+                        </div>
+                        {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                          <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
                         )}
                       </div>
-                      {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
-                        <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
-                      )}
-                    </div>
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900 truncate">
-                          {member.name}
-                        </span>
-                        {member.role && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
-                            {member.role}
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-gray-900 truncate">
+                            {member.name}
                           </span>
-                        )}
+                          {member.role && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 whitespace-nowrap">
+                              {member.role}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500">{member.part}</div>
                       </div>
-                      <div className="text-sm text-gray-500">{member.part}</div>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               ))}
             </div>
@@ -411,33 +437,55 @@ export default function Members({ userRole, userData }: MembersProps) {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredMembers.map((member) => (
-                      <tr
-                        key={member.id}
-                        onClick={() => isAdmin && setSelectedMember(member)}
-                        className={`hover:bg-gray-50 transition-colors ${isAdmin ? 'cursor-pointer' : ''}`}
-                      >
-                        <td className="p-4">
-                          <div className="relative inline-block">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
-                              {member.imageUrl ? (
-                                <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <User className="h-5 w-5" />
+                      <tr key={member.id} className="relative overflow-hidden group">
+                        <td colSpan={4} className="p-0 border-b border-gray-100 overflow-hidden relative">
+                          {/* Background Delete Button (Desktop Admin) */}
+                          {isAdmin && (
+                            <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-12 z-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(member);
+                                }}
+                                className="flex items-center gap-2 text-white font-bold"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                                <span>대원 탈퇴 처리</span>
+                              </button>
+                            </div>
+                          )}
+
+                          <motion.div
+                            drag={isAdmin ? "x" : false}
+                            dragConstraints={{ left: -140, right: 0 }}
+                            dragElastic={0.1}
+                            onClick={() => isAdmin && setSelectedMember(member)}
+                            className={`relative z-10 bg-white hover:bg-gray-50 transition-colors flex items-center w-full px-4 py-3 ${isAdmin ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                          >
+                            <div className="w-16 flex-shrink-0">
+                              <div className="relative inline-block">
+                                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden">
+                                  {member.imageUrl ? (
+                                    <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User className="h-5 w-5" />
+                                  )}
+                                </div>
+                                {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                                  <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex-1 text-sm font-medium text-gray-900">{member.name}</div>
+                            <div className="flex-1 text-sm text-gray-500">{member.part}</div>
+                            <div className="flex-1">
+                              {member.role && (
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                  {member.role}
+                                </span>
                               )}
                             </div>
-                            {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
-                              <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm font-medium text-gray-900">{member.name}</td>
-                        <td className="p-4 text-sm text-gray-500">{member.part}</td>
-                        <td className="p-4">
-                          {member.role && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                              {member.role}
-                            </span>
-                          )}
+                          </motion.div>
                         </td>
                       </tr>
                     ))}

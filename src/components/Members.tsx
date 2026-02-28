@@ -141,7 +141,7 @@ export default function Members({ userRole, userData }: MembersProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (memberId: string, e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (memberId: string, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -150,34 +150,47 @@ export default function Members({ userRole, userData }: MembersProps) {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('파일 크기가 너무 큽니다. 2MB 이하의 이미지를 업로드해주세요.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('5MB 이하의 이미지만 업로드 가능합니다.');
       return;
     }
 
     setIsUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const imageUrl = event.target?.result as string;
-      if (imageUrl) {
-        try {
-          const userRef = doc(db, 'users', memberId);
-          await updateDoc(userRef, {
-            imageUrl: imageUrl
-          });
-          // 실시간 Snapshot이 처리함
-        } catch (error) {
-          console.error('Image upload failed to Firestore:', error);
-          alert('이미지 저장 중 오류가 발생했습니다.');
-        }
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // ImgBB API Key from env
+      const VITE_IMGBB_API_KEY = (import.meta as any).env?.VITE_IMGBB_API_KEY || '';
+
+      if (!VITE_IMGBB_API_KEY) {
+        alert('이미지 서버 설정(API Key)이 누락되었습니다.');
+        setIsUploadingImage(false);
+        return;
       }
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${VITE_IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const imageUrl = data.data.url;
+        const userRef = doc(db, 'users', memberId);
+        await updateDoc(userRef, {
+          imageUrl: imageUrl
+        });
+      } else {
+        throw new Error(data.error?.message || '업로드 실패');
+      }
+    } catch (error: any) {
+      console.error('Image upload failed:', error);
+      alert(`이미지 저장 중 오류가 발생했습니다: ${error.message || error}`);
+    } finally {
       setIsUploadingImage(false);
-    };
-    reader.onerror = () => {
-      alert('이미지 읽기 중 오류가 발생했습니다.');
-      setIsUploadingImage(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleUpdateMemberInfo = async (memberId: string, field: keyof Member, value: string) => {

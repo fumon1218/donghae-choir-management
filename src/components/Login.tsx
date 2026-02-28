@@ -49,7 +49,8 @@ export default function Login({ onLogin }: LoginProps) {
     setError('');
 
     // 아이디를 내부 이메일 형식으로 변환 (도메인이 없으면 @donghae.church 추가)
-    const processedEmail = email.includes('@') ? email : `${email}@donghae.church`;
+    // 아이디는 대소문자 구분 없이 소문자로 처리하여 일관성 유지
+    const processedEmail = email.includes('@') ? email.toLowerCase() : `${email.toLowerCase()}@donghae.church`;
 
     try {
       if (isSignUp) {
@@ -80,8 +81,12 @@ export default function Login({ onLogin }: LoginProps) {
         setError('이미 사용 중인 아이디입니다.');
       } else if (err.code === 'auth/weak-password') {
         setError('비밀번호는 6자리 이상이어야 합니다.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('현재 아이디/비밀번호 가입 기능이 서버에서 비활성화되어 있습니다. 관리자(지휘자)에게 문의해 주세요. (Firebase Email Auth 활성화 필요)');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('네트워크 연결이 원활하지 않습니다. 인터넷 연결을 확인해 주세요.');
       } else {
-        setError('로그인/가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        setError(`오류가 발생했습니다: ${err.message || err.code || '알 수 없는 오류'}`);
       }
     } finally {
       setIsLoading(false);

@@ -19,6 +19,7 @@ interface AttendanceProps {
 }
 
 export default function Attendance({ userData, userRole }: AttendanceProps) {
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [activePart, setActivePart] = useState<Part | 'All'>('All');
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
@@ -61,7 +62,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
     return () => unsubscribe();
   }, []);
 
-  const practiceDates = getPracticeDates(2026, currentMonth);
+  const practiceDates = getPracticeDates(currentYear, currentMonth);
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
 
   const filteredMembers = allMembers.filter(m => activePart === 'All' || m.part === activePart);
@@ -117,7 +118,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">출석부 (2026년)</h1>
+        <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">출석부 ({currentYear}년)</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -128,14 +129,28 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
             {isMobileView ? <Monitor className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />}
           </button>
 
-          <div className="flex items-center space-x-2 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-            <button onClick={() => setCurrentMonth(m => m === 1 ? 12 : m - 1)} className="p-1.5 rounded hover:bg-gray-100">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-sm font-bold w-12 text-center">{currentMonth}월</span>
-            <button onClick={() => setCurrentMonth(m => m === 12 ? 1 : m + 1)} className="p-1.5 rounded hover:bg-gray-100">
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-2">
+            {/* Year Navigation */}
+            <div className="flex items-center space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+              <button onClick={() => setCurrentYear(y => y - 1)} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-sm font-bold w-14 text-center text-gray-900">{currentYear}년</span>
+              <button onClick={() => setCurrentYear(y => y + 1)} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Month Navigation */}
+            <div className="flex items-center space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+              <button onClick={() => setCurrentMonth(m => m === 1 ? 12 : m - 1)} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-sm font-bold w-10 text-center text-gray-900">{currentMonth}월</span>
+              <button onClick={() => setCurrentMonth(m => m === 12 ? 1 : m + 1)} className="p-1.5 rounded hover:bg-gray-100 text-gray-600">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1 overflow-x-auto">

@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.2.7';
-export const UPDATE_SUMMARY = '게시판 관리 모달 레이아웃 버그 수정 (사이드바 갇힘 현상 해결)';
+export const APP_VERSION = 'v1.2.8';
+export const UPDATE_SUMMARY = '회원 탈퇴(계정 및 정보 영구 삭제) 기능 추가';

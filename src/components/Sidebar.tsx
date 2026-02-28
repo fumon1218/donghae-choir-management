@@ -1,7 +1,7 @@
 import { LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen, Settings, Edit2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import { BoardCategory } from '../data';
 import logoUrl from '../assets/logo.jpg';
 import BoardManager from './BoardManager';
@@ -62,6 +62,37 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('프로필 수정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userData?.uid) return;
+
+    const confirm1 = window.confirm('정말 탈퇴하시겠습니까?\n모든 정보가 즉시 삭제되며 되돌릴 수 없습니다.');
+    if (!confirm1) return;
+
+    const confirm2 = window.prompt("탈퇴를 확정하려면 '탈퇴'라고 입력해 주세요.");
+    if (confirm2 !== '탈퇴') return;
+
+    try {
+      // 1. Firestore 에서 유저 정보 삭제
+      await deleteDoc(doc(db, 'users', userData.uid));
+
+      // 2. Auth 에서 유저 삭제
+      if (auth.currentUser) {
+        await auth.currentUser.delete();
+      }
+
+      alert('회원 탈퇴가 안전하게 처리되었습니다.\n그동안 동해교회 찬양대를 이용해 주셔서 감사합니다.');
+      onLogout();
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+      if (error.code === 'auth/requires-recent-login') {
+        alert('보안을 위해 다시 로그인한 직후에만 탈퇴가 가능합니다.\n로그아웃 후 다시 로그인하여 시도해 주세요.');
+        onLogout();
+      } else {
+        alert('탈퇴 처리 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
+      }
     }
   };
 
@@ -254,6 +285,17 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
                     className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
                   >
                     저장하기
+                  </button>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-100 px-6 pb-6 text-center">
+                  <p className="text-[11px] text-gray-400 mb-3">더 이상 서비스를 이용하지 않으시나요?</p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="w-full py-2.5 text-[11px] font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-dashed border-gray-200 hover:border-red-200"
+                  >
+                    회원 탈퇴하기
                   </button>
                 </div>
               </form>

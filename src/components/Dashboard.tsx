@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Music, Calendar, Loader2, Megaphone, Edit3, Save, X } from 'lucide-react';
-import { hymns, schedules, Member } from '../data';
+import { Users, Music, Calendar, Loader2, Megaphone, Edit3, Save, X, Plus, Trash2, Clock, MapPin } from 'lucide-react';
+import { hymns, Member, Schedule as ScheduleType } from '../data';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -15,15 +15,28 @@ export default function Dashboard({ userRole }: DashboardProps) {
   const [adContent, setAdContent] = useState('');
   const [isEditingAd, setIsEditingAd] = useState(false);
   const [tempAdContent, setTempAdContent] = useState('');
+  const [schedules, setSchedules] = useState<ScheduleType[]>([]);
+  const [isManagingSchedules, setIsManagingSchedules] = useState(false);
+  const [editSchedules, setEditSchedules] = useState<ScheduleType[]>([]);
 
   // Fetch Advertisement Content
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'advertisement'), (docSnap) => {
+    const unsubAd = onSnapshot(doc(db, 'settings', 'advertisement'), (docSnap) => {
       if (docSnap.exists()) {
         setAdContent(docSnap.data().content || '');
       }
     });
-    return () => unsub();
+
+    const unsubSchedules = onSnapshot(doc(db, 'settings', 'schedules'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSchedules(docSnap.data().list || []);
+      }
+    });
+
+    return () => {
+      unsubAd();
+      unsubSchedules();
+    };
   }, []);
 
   useEffect(() => {
@@ -175,14 +188,28 @@ export default function Dashboard({ userRole }: DashboardProps) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-lg shrink-0">
-            <Calendar className="w-6 h-6" />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg shrink-0">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-500">주간 연습</p>
+              <p className="text-2xl font-bold text-gray-900 truncate">{schedules.length}회</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">주간 연습</p>
-            <p className="text-2xl font-bold text-gray-900 truncate">{schedules.length}회</p>
-          </div>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setEditSchedules([...schedules]);
+                setIsManagingSchedules(true);
+              }}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="연습 일정 수정"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -228,6 +255,126 @@ export default function Dashboard({ userRole }: DashboardProps) {
           )}
         </div>
       </div>
+
+      {/* Schedule Management Modal */}
+      {isManagingSchedules && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]" onClick={() => setIsManagingSchedules(false)}>
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">주간 연습 일정 관리</h3>
+                <p className="text-xs text-gray-500 mt-0.5">대시보드와 일정 탭에 반영됩니다.</p>
+              </div>
+              <button onClick={() => setIsManagingSchedules(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[70vh] overflow-y-auto space-y-4">
+              {editSchedules.map((schedule, idx) => (
+                <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3 relative group">
+                  <button
+                    onClick={() => setEditSchedules(prev => prev.filter((_, i) => i !== idx))}
+                    className="absolute top-3 right-3 p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">요일</label>
+                      <input
+                        type="text"
+                        value={schedule.day}
+                        onChange={e => {
+                          const newList = [...editSchedules];
+                          newList[idx] = { ...newList[idx], day: e.target.value };
+                          setEditSchedules(newList);
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="예: 주일 (일요일)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">시간</label>
+                      <input
+                        type="text"
+                        value={schedule.time}
+                        onChange={e => {
+                          const newList = [...editSchedules];
+                          newList[idx] = { ...newList[idx], time: e.target.value };
+                          setEditSchedules(newList);
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="예: 09:00 - 10:30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">장소</label>
+                      <input
+                        type="text"
+                        value={schedule.location}
+                        onChange={e => {
+                          const newList = [...editSchedules];
+                          newList[idx] = { ...newList[idx], location: e.target.value };
+                          setEditSchedules(newList);
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder="예: 제1찬양대실"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">설명</label>
+                    <input
+                      type="text"
+                      value={schedule.description}
+                      onChange={e => {
+                        const newList = [...editSchedules];
+                        newList[idx] = { ...newList[idx], description: e.target.value };
+                        setEditSchedules(newList);
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      placeholder="예: 주일 1부 예배 찬양 연습"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={() => setEditSchedules([...editSchedules, { day: '', time: '', location: '', description: '' }])}
+                className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50/30 transition-all flex items-center justify-center gap-2 group"
+              >
+                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium">새로운 일정 추가</span>
+              </button>
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setIsManagingSchedules(false)}
+                className="flex-1 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await setDoc(doc(db, 'settings', 'schedules'), { list: editSchedules });
+                    setIsManagingSchedules(false);
+                  } catch (error) {
+                    alert('일정 저장 중 오류가 발생했습니다.');
+                  }
+                }}
+                className="flex-[2] px-6 py-3 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                모든 변경사항 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

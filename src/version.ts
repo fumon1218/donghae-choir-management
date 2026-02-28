@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.3.1';
-export const UPDATE_SUMMARY = '대시보드: 관리자용 실시간 광고(공지) 게시판 기능 추가';
+export const APP_VERSION = 'v1.3.2';
+export const UPDATE_SUMMARY = '인원 관리: 관리자가 직분(권한) 목록을 직접 수정/추가할 수 있는 기능 도입';

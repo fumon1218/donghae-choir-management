@@ -1,6 +1,6 @@
 import { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { Part, Member } from '../data';
-import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor, Trash } from 'lucide-react';
+import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Camera, Loader2, Plus, Smartphone, Monitor, Trash, Edit3 } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,6 +20,9 @@ export default function Members({ userRole, userData }: MembersProps) {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [swipedMemberId, setSwipedMemberId] = useState<string | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [isManagingRoles, setIsManagingRoles] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
 
   // Load join requests from Firestore
   useEffect(() => {
@@ -57,6 +60,22 @@ export default function Members({ userRole, userData }: MembersProps) {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Load available roles from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'roles'), (docSnap) => {
+      if (docSnap.exists()) {
+        setAvailableRoles(docSnap.data().list || []);
+      } else {
+        // Default roles if none exist in Firestore
+        const defaultRoles = ['대장', '지휘자', '파트장', '메인반주', '부반주', '게시판 관리자', '자유게시판 관리자', '시작찬송 관리자', '총무', '서기'];
+        setAvailableRoles(defaultRoles);
+        setDoc(doc(db, 'settings', 'roles'), { list: defaultRoles });
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   // Admin (My Profile) logic - using a reserved ID "admin" or UID
@@ -147,6 +166,33 @@ export default function Members({ userRole, userData }: MembersProps) {
     } catch (error) {
       console.error('Error updating role:', error);
       alert('역할 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleAddRole = async () => {
+    if (!newRoleName.trim()) return;
+    if (availableRoles.includes(newRoleName.trim())) {
+      alert('이미 존재하는 직분입니다.');
+      return;
+    }
+
+    const updatedRoles = [...availableRoles, newRoleName.trim()];
+    try {
+      await setDoc(doc(db, 'settings', 'roles'), { list: updatedRoles }, { merge: true });
+      setNewRoleName('');
+    } catch (error) {
+      alert('직분 추가 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteRole = async (roleToDelete: string) => {
+    if (window.confirm(`'${roleToDelete}' 직분을 목록에서 삭제하시겠습니까?`)) {
+      const updatedRoles = availableRoles.filter(r => r !== roleToDelete);
+      try {
+        await setDoc(doc(db, 'settings', 'roles'), { list: updatedRoles }, { merge: true });
+      } catch (error) {
+        alert('직분 삭제 중 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -252,6 +298,16 @@ export default function Members({ userRole, userData }: MembersProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          {isAdmin && (
+            <button
+              onClick={() => setIsManagingRoles(true)}
+              className="p-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 text-sm font-medium border border-indigo-100 shrink-0"
+              title="직분 종류 설정"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span className="hidden sm:inline">직분 설정</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -571,7 +627,7 @@ export default function Members({ userRole, userData }: MembersProps) {
                       <User className="h-10 w-10" />
                     </div>
                   )}
-                  {selectedMember.role && (selectedMember.role === '지휘자' || selectedMember.role === '파트장' || selectedMember.role === '메인반주' || selectedMember.role === '게시판 관리자' || selectedMember.role.includes('관리자')) && (
+                  {selectedMember.role && (selectedMember.role === '대장' || selectedMember.role === '지휘자' || selectedMember.role === '파트장' || selectedMember.role === '메인반주' || selectedMember.role === '게시판 관리자' || selectedMember.role.includes('관리자')) && (
                     <span className="absolute top-0 right-0 text-xl drop-shadow">👑</span>
                   )}
                   <div
@@ -637,16 +693,9 @@ export default function Members({ userRole, userData }: MembersProps) {
                     onChange={(e) => handleRoleChange(selectedMember.id, e.target.value)}
                   >
                     <option value="">권한 없음 (일반 대원)</option>
-                    <option value="대장">대장 👑</option>
-                    <option value="지휘자">지휘자 👑</option>
-                    <option value="파트장">파트장</option>
-                    <option value="메인반주">메인반주</option>
-                    <option value="부반주">부반주</option>
-                    <option value="게시판 관리자">게시판 관리자 (전체)</option>
-                    <option value="자유게시판 관리자">자유게시판 관리자 ✨</option>
-                    <option value="시작찬송 관리자">시작찬송 관리자 ✨</option>
-                    <option value="총무">총무</option>
-                    <option value="서기">서기</option>
+                    {availableRoles.map(role => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -655,6 +704,62 @@ export default function Members({ userRole, userData }: MembersProps) {
         </div>
       )
       }
+
+      {/* Role Management Modal */}
+      {isManagingRoles && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]" onClick={() => setIsManagingRoles(false)}>
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">직분 (권한) 종류 설정</h3>
+              <button onClick={() => setIsManagingRoles(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="새 직분 이름 (예: 총무, 회계)"
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                  value={newRoleName}
+                  onChange={e => setNewRoleName(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && handleAddRole()}
+                />
+                <button
+                  onClick={handleAddRole}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
+                >
+                  추가
+                </button>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+                {availableRoles.map(role => (
+                  <div key={role} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group">
+                    <span className="text-sm font-medium text-gray-700">{role}</span>
+                    <button
+                      onClick={() => handleDeleteRole(role)}
+                      className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 text-center">※ 직분을 삭제해도 이미 해당 직분이 부여된 대원의 정보는 변하지 않습니다.</p>
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => setIsManagingRoles(false)}
+                className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

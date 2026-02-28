@@ -102,8 +102,10 @@ export default function Login({ onLogin }: LoginProps) {
       console.error('Anonymous login error:', err);
       if (err.code === 'auth/operation-not-allowed') {
         setError('현재 아이디 없이 가입하는 기능이 서버에서 비활성화되어 있습니다. 관리자(지휘자)에게 문의해 주세요. (Firebase Anonymous Auth 활성화 필요)');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('네트워크 연결이 원활하지 않습니다. 인터넷 연결을 확인해 주세요.');
       } else {
-        setError('간편 가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        setError(`간편 가입 오류가 발생했습니다 (${err.code || 'unknown'}): ${err.message || '잠시 후 다시 시도해 주세요.'}`);
       }
     } finally {
       setIsLoading(false);

@@ -77,15 +77,23 @@ export default function Members({ userRole, userData }: MembersProps) {
   });
 
 
-  const handleDelete = async (member: Member) => {
-    if (window.confirm(`${member.name} 대원을 명단에서 완전히 삭제하시겠습니까?\n(데이터베이스에서 해당 계정 정보가 제거됩니다.)`)) {
+  const handleDelete = async (member: Member | null) => {
+    if (!member) return;
+
+    const confirmMessage = `${member.name} 대원을 명단에서 완전히 삭제하시겠습니까?\n(데이터베이스에서 해당 계정 정보가 제거됩니다.)`;
+
+    if (window.confirm(confirmMessage)) {
       try {
         await deleteDoc(doc(db, 'users', member.id));
         setSelectedMember(null); // Success case: close modal
-        alert(`${member.name} 대원이 삭제되었습니다.`);
+        alert(`${member.name} 대원이 성공적으로 삭제되었습니다.`);
       } catch (error: any) {
         console.error('Error deleting member:', error);
-        alert(`삭제 중 오류가 발생했습니다: ${error.message || error}`);
+        if (error.code === 'permission-denied') {
+          alert('삭제 권한이 없습니다. Firebase 보안 규칙 설정을 확인해 주세요.');
+        } else {
+          alert(`삭제 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
+        }
       }
     }
   };

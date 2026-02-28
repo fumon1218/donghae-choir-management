@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.2.6';
-export const UPDATE_SUMMARY = '로그인 세션 유지 강화 및 버전 정보 노출 기능 추가';
+export const APP_VERSION = 'v1.2.7';
+export const UPDATE_SUMMARY = '게시판 관리 모달 레이아웃 버그 수정 (사이드바 갇힘 현상 해결)';

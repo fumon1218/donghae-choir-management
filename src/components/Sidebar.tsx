@@ -15,11 +15,11 @@ interface SidebarProps {
   userData?: any;
   isOpen?: boolean;
   onClose?: () => void;
+  onOpenBoardManager: () => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, userData, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, userData, isOpen, onClose, onOpenBoardManager }: SidebarProps) {
   const [boardCategories, setBoardCategories] = useState<BoardCategory[]>([]);
-  const [showBoardManager, setShowBoardManager] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState('');
   const [menuConfig, setMenuConfig] = useState<Record<string, { label: string; visible: boolean }>>({});
@@ -165,7 +165,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
           {isAdmin && (
             <div className="pt-4 mt-4 border-t border-gray-100">
               <button
-                onClick={() => setShowBoardManager(true)}
+                onClick={onOpenBoardManager}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200"
               >
                 <Settings className="w-5 h-5 text-gray-400" />
@@ -215,8 +215,6 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
             <span className="text-[10px] font-bold text-gray-300 tracking-wider">VER {APP_VERSION}</span>
           </div>
         </div>
-
-        {showBoardManager && <BoardManager onClose={() => setShowBoardManager(false)} />}
 
         {/* Profile Edit Modal */}
         {isEditingProfile && (

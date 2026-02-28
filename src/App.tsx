@@ -30,6 +30,7 @@ export default function App() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showBoardManager, setShowBoardManager] = useState(false);
 
   useEffect(() => {
     // 4초 동안 로딩 상태가 풀리지 않으면 강제 해제합니다. (빠른 화면 진입 보장)
@@ -271,6 +272,7 @@ export default function App() {
         userData={userData}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+        onOpenBoardManager={() => setShowBoardManager(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 md:ml-64 relative min-h-screen">
@@ -301,6 +303,10 @@ export default function App() {
           {APP_VERSION}
         </div>
       </div>
+
+      {showBoardManager && (
+        <BoardManager onClose={() => setShowBoardManager(false)} />
+      )}
     </div>
   );
 }

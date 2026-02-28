@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
 import { getPracticeDates, PracticeDate } from '../utils/dateUtils';
 import { ChevronLeft, ChevronRight, Check, X, Save, Users, Smartphone, Monitor } from 'lucide-react';
-import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 type AttendanceStatus = 'present' | 'absent' | 'none';
@@ -25,6 +25,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord>({});
 
+  // Load attendance records
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'attendance', 'all'), (docSnap) => {
       if (docSnap.exists()) {
@@ -34,26 +35,22 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
     return () => unsub();
   }, []);
 
+  // Load members from Firestore (Sync 'users' collection)
   useEffect(() => {
-    const savedMembers = localStorage.getItem('choir_extra_members');
-    const extraMembers = savedMembers ? JSON.parse(savedMembers) : [];
-    const savedDeleted = localStorage.getItem('choir_deleted_members');
-    const deletedMembers: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const usersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Member[];
 
-    let combinedMembers = [...initialMembers, ...extraMembers];
-    if (userData && userData.uid) {
-      const myMember: Member = {
-        id: userData.uid,
-        name: userData.displayName || userData.name || '지휘자 (나)',
-        part: userData.part || 'Orchestra',
-      };
-      if (!combinedMembers.some(m => m.id === myMember.id)) {
-        combinedMembers.push(myMember);
-      }
-    }
+      // Filter out deleted or invalid members if needed
+      // For now, any user in the 'users' collection is a member
+      setAllMembers(usersData.sort((a, b) => a.name.localeCompare(b.name)));
+    });
 
-    setAllMembers(combinedMembers.filter(m => !deletedMembers.includes(m.id)));
-  }, [userData]);
+    return () => unsubscribe();
+  }, []);
 
   const practiceDates = getPracticeDates(2026, currentMonth);
   const parts: (Part | 'All')[] = ['All', 'Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];

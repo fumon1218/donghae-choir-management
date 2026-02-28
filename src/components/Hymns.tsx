@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { hymns as initialHymns, Hymn } from '../data';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Smartphone, Monitor } from 'lucide-react';
+import { collection, query, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface HymnsProps {
   userRole: string | null;
@@ -8,17 +10,33 @@ interface HymnsProps {
 
 export default function Hymns({ userRole }: HymnsProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole === '시작찬송 관리자';
+  const [allHymns, setAllHymns] = useState<Hymn[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
-  const [allHymns, setAllHymns] = useState<Hymn[]>(() => {
-    // 기존 테스트 데이터를 강제로 삭제하기 위해 localStorage를 비웁니다.
-    localStorage.removeItem('choir_hymns');
-    return initialHymns;
-  });
   const [isEditing, setIsEditing] = useState(false);
   const [editHymns, setEditHymns] = useState<Hymn[]>([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
+
+  // Load hymns from Firestore (Settings-based for atomicity across all items)
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'hymns_data'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.list) {
+          setAllHymns(data.list);
+        }
+      } else {
+        // Fallback to initial data if Firestore is empty
+        setAllHymns(initialHymns);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const currentMonthHymns = allHymns.filter(h => h.month === currentMonth);
 
@@ -41,16 +59,37 @@ export default function Hymns({ userRole }: HymnsProps) {
     setIsEditing(false);
   };
 
-  const handleSaveEdit = () => {
-    const otherMonthsHymns = allHymns.filter(h => h.month !== currentMonth);
-    const updatedHymns = [...otherMonthsHymns, ...editHymns].sort((a, b) => {
-      if (a.month !== b.month) return a.month - b.month;
-      return a.date.localeCompare(b.date);
-    });
+  const handleSaveEdit = async () => {
+    setIsLoading(true);
+    try {
+      const batch = writeBatch(db);
 
-    setAllHymns(updatedHymns);
-    localStorage.setItem('choir_hymns', JSON.stringify(updatedHymns));
-    setIsEditing(false);
+      // 1. Delete all hymns for BOTH initial and current state to ensure clean sync
+      // Actually, it's safer to just overwrite or sync by a unique key. 
+      // Since Hymn doesn't have a unique ID, we'll use a specific document structure or just handle it month by month.
+
+      // For simplicity and consistency, let's store each hymn as a doc in Firestore
+      // To keep it simple for this migration:
+      const otherMonthsHymns = allHymns.filter(h => h.month !== currentMonth);
+      const updatedHymns = [...otherMonthsHymns, ...editHymns];
+
+      // Store the entire collection state (or we can do it more granularly)
+      // For this app's scale, saving the whole month or whole list is fine.
+      // Let's use a single doc for the entire hymns list to ensure perfect sync across all clients easily
+      await setDoc(doc(db, 'settings', 'hymns_data'), {
+        list: updatedHymns.sort((a, b) => {
+          if (a.month !== b.month) return a.month - b.month;
+          return a.date.localeCompare(b.date);
+        })
+      });
+
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save hymns:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleUpdateHymn = (index: number, field: keyof Hymn, value: string | number) => {
@@ -147,6 +186,14 @@ export default function Hymns({ userRole }: HymnsProps) {
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 relative">

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, CalendarDays, Smartphone, Monitor } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, CalendarDays, Smartphone, Monitor, Loader2 } from 'lucide-react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface OpeningHymn {
   id: string;
@@ -22,11 +24,24 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
   const [editList, setEditList] = useState<OpeningHymn[]>([]);
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load opening hymns from Firestore
   useEffect(() => {
-    const saved = localStorage.getItem('choir_opening_hymns');
-    if (saved) {
-      setAllOpeningHymns(JSON.parse(saved));
-    }
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'opening_hymns'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.list) {
+          setAllOpeningHymns(data.list);
+        }
+      } else {
+        // Fallback to empty list if Firestore is empty
+        setAllOpeningHymns([]);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const currentMonthHymns = allOpeningHymns.filter(h => h.month === currentMonth);
@@ -50,17 +65,24 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
     setIsEditing(false);
   };
 
-  const handleSaveEdit = () => {
-    const otherMonthsHymns = allOpeningHymns.filter(h => h.month !== currentMonth);
-    const updatedHymns = [...otherMonthsHymns, ...editList].sort((a, b) => {
-      if (a.month !== b.month) return a.month - b.month;
-      // Sort by date string
-      return a.date.localeCompare(b.date);
-    });
+  const handleSaveEdit = async () => {
+    setIsLoading(true);
+    try {
+      const updatedHymns = [...allOpeningHymns.filter(h => h.month !== currentMonth), ...editList].sort((a, b) => {
+        if (a.month !== b.month) return a.month - b.month;
+        return a.date.localeCompare(b.date);
+      });
 
-    setAllOpeningHymns(updatedHymns);
-    localStorage.setItem('choir_opening_hymns', JSON.stringify(updatedHymns));
-    setIsEditing(false);
+      await setDoc(doc(db, 'settings', 'opening_hymns'), {
+        list: updatedHymns
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save opening hymns:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleUpdateHymn = (index: number, field: keyof OpeningHymn, value: any) => {
@@ -208,6 +230,14 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

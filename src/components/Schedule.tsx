@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { schedules as initialSchedules, Schedule as ScheduleType } from '../data';
-import { Clock, MapPin, CalendarDays, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
+import { Clock, MapPin, CalendarDays, Edit2, Save, X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface ScheduleProps {
   userRole: string | null;
@@ -8,12 +10,28 @@ interface ScheduleProps {
 
 export default function Schedule({ userRole }: ScheduleProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
-  const [schedules, setSchedules] = useState<ScheduleType[]>(() => {
-    const saved = localStorage.getItem('choir_schedules');
-    return saved ? JSON.parse(saved) : initialSchedules;
-  });
+  const [schedules, setSchedules] = useState<ScheduleType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editList, setEditList] = useState<ScheduleType[]>([]);
+
+  // Load schedules from Firestore
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'schedules'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.list) {
+          setSchedules(data.list);
+        }
+      } else {
+        // Fallback to initial data if Firestore is empty
+        setSchedules(initialSchedules);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleStartEdit = () => {
     setEditList([...schedules]);
@@ -24,10 +42,19 @@ export default function Schedule({ userRole }: ScheduleProps) {
     setIsEditing(false);
   };
 
-  const handleSaveEdit = () => {
-    setSchedules(editList);
-    localStorage.setItem('choir_schedules', JSON.stringify(editList));
-    setIsEditing(false);
+  const handleSaveEdit = async () => {
+    setIsLoading(true);
+    try {
+      await setDoc(doc(db, 'settings', 'schedules'), {
+        list: editList
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save schedules:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleUpdateItem = (index: number, field: keyof ScheduleType, value: string) => {
@@ -43,6 +70,14 @@ export default function Schedule({ userRole }: ScheduleProps) {
   const handleDeleteItem = (index: number) => {
     setEditList(editList.filter((_, i) => i !== index));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

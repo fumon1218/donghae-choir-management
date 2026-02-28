@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.3.0';
-export const UPDATE_SUMMARY = '인원 관리: 스와이프 삭제 UI 고정 및 감도 개선';
+export const APP_VERSION = 'v1.3.1';
+export const UPDATE_SUMMARY = '대시보드: 관리자용 실시간 광고(공지) 게시판 기능 추가';

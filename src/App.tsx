@@ -237,7 +237,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard userRole={userRole} />;
       case 'members':
         return <Members userRole={userRole} userData={userData} />;
       case 'attendance':
@@ -255,7 +255,7 @@ export default function App() {
           const boardId = activeTab.replace('board_', '');
           return <Board boardId={boardId} userRole={userRole} userData={userData} />;
         }
-        return <Dashboard />;
+        return <Dashboard userRole={userRole} />;
     }
   };
 

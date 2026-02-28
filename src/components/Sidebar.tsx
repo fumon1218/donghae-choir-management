@@ -91,27 +91,12 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     })),
     ...configuredBaseItems.slice(3), // 나머지 (찬송, 스케줄 등) 삽입
   ].filter(item => {
-    // 모든 권한을 가진 슈퍼 관리자
-    if (userRole === '지휘자' || userRole === '대장') return true;
-
-    // 시작찬송 관리자: 월별 찬송가만 접근 가능 (+ 대시보드 등의 기본 메뉴는 허용할지 결정 필요, 여기선 요청대로 제한)
-    if (userRole === '시작찬송 관리자') {
-      return ['dashboard', 'hymns'].includes(item.id);
+    // 인원 관리 메뉴는 오직 지휘자/대장만 볼 수 있음
+    if (item.id === 'members') {
+      return userRole === '지휘자' || userRole === '대장';
     }
-
-    // 자유게시판 관리자: 자유게시판(board_default)만 접근 가능
-    if (userRole === '자유게시판 관리자') {
-      return ['dashboard', 'board_default'].includes(item.id);
-    }
-
-    // 게시판 관리자 (전체): 모든 게시판(board_...) 접근 가능
-    if (userRole === '게시판 관리자') {
-      return item.id.startsWith('board_') || item.id === 'dashboard';
-    }
-
-    // 일반 대원 및 기타 역할: 관리 기능(인원관리, 시작찬송관리 등) 제외한 기본 메뉴만 노출
-    const adminOnlyTabs = ['members', 'opening-hymns'];
-    return !adminOnlyTabs.includes(item.id);
+    // 그 외 모든 메뉴(게시판, 찬송가 등)는 모든 대원에게 노출
+    return true;
   });
 
   return (

@@ -10,7 +10,12 @@ interface OpeningHymn {
   title: string;
 }
 
-export default function OpeningHymns() {
+interface OpeningHymnsProps {
+  userRole?: string | null;
+}
+
+export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole === '시작찬송 관리자';
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [allOpeningHymns, setAllOpeningHymns] = useState<OpeningHymn[]>([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -232,7 +237,7 @@ export default function OpeningHymns() {
             </button>
           </div>
 
-          {!isEditing ? (
+          {isAdmin && (!isEditing ? (
             <button
               onClick={handleStartEdit}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
@@ -251,7 +256,7 @@ export default function OpeningHymns() {
                 저장하기
               </button>
             </div>
-          )}
+          ))}
         </div>
       </div>
 

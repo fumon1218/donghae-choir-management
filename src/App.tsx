@@ -190,7 +190,7 @@ export default function App() {
       case 'attendance':
         return <Attendance userData={userData} userRole={userRole} />;
       case 'opening-hymns':
-        return <OpeningHymns />;
+        return <OpeningHymns userRole={userRole} />;
       case 'hymns':
         return <Hymns userRole={userRole} />;
       case 'schedule':

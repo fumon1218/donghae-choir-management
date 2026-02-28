@@ -81,10 +81,11 @@ export default function Members({ userRole, userData }: MembersProps) {
     if (window.confirm(`${member.name} 대원을 명단에서 완전히 삭제하시겠습니까?\n(데이터베이스에서 해당 계정 정보가 제거됩니다.)`)) {
       try {
         await deleteDoc(doc(db, 'users', member.id));
+        setSelectedMember(null); // Success case: close modal
         alert(`${member.name} 대원이 삭제되었습니다.`);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting member:', error);
-        alert('삭제 중 오류가 발생했습니다.');
+        alert(`삭제 중 오류가 발생했습니다: ${error.message || error}`);
       }
     }
   };
@@ -450,10 +451,7 @@ export default function Members({ userRole, userData }: MembersProps) {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 relative">
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
               <button
-                onClick={() => {
-                  setSelectedMember(null);
-                  handleDelete(selectedMember);
-                }}
+                onClick={() => handleDelete(selectedMember)}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-rose-500 hover:bg-rose-50 hover:text-rose-600 backdrop-blur shadow-sm transition-colors"
                 title="삭제"
               >

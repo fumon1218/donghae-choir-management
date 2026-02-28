@@ -48,19 +48,22 @@ export default function Login({ onLogin }: LoginProps) {
     setIsLoading(true);
     setError('');
 
+    // 아이디를 내부 이메일 형식으로 변환 (도메인이 없으면 @donghae.church 추가)
+    const processedEmail = email.includes('@') ? email : `${email}@donghae.church`;
+
     try {
       if (isSignUp) {
         if (!name.trim()) {
           throw new Error('이름을 입력해주세요.');
         }
         const result: any = await Promise.race([
-          createUserWithEmailAndPassword(auth, email, password),
+          createUserWithEmailAndPassword(auth, processedEmail, password),
           new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
         ]);
         await ensureUserInFirestore(result.user.uid, result.user.email, name, null);
       } else {
         await Promise.race([
-          signInWithEmailAndPassword(auth, email, password),
+          signInWithEmailAndPassword(auth, processedEmail, password),
           new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
         ]);
       }
@@ -71,10 +74,10 @@ export default function Login({ onLogin }: LoginProps) {
         setError(err.message);
       } else if (err.message === 'auth_timeout') {
         setError('서버 응답이 지연되고 있습니다. 네트워크 상태를 확인하시거나 잠시 후 다시 시도해주세요.');
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('이메일 또는 비밀번호가 일치하지 않습니다.');
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-email') {
+        setError('아이디 또는 비밀번호가 일치하지 않습니다.');
       } else if (err.code === 'auth/email-already-in-use') {
-        setError('이미 가입된 이메일입니다.');
+        setError('이미 사용 중인 아이디입니다.');
       } else if (err.code === 'auth/weak-password') {
         setError('비밀번호는 6자리 이상이어야 합니다.');
       } else {
@@ -95,7 +98,7 @@ export default function Login({ onLogin }: LoginProps) {
     } catch (err: any) {
       console.error('Google login error:', err);
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
-        setError('팝업이 차단되었거나 창이 닫혔습니다. [설정]에서 팝업 차단을 해제하거나 이메일로 로그인해주세요.');
+        setError('팝업이 차단되었거나 창이 닫혔습니다. [설정]에서 팝업 차단을 해제하거나 아이디로 로그인해주세요.');
       } else {
         setError('구글 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
       }
@@ -120,6 +123,9 @@ export default function Login({ onLogin }: LoginProps) {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 leading-tight">
           동해교회 찬양대
         </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          {isSignUp ? '새로운 계정을 만들고 가입 신청을 하세요' : '계정에 로그인하여 찬양대 관리를 시작하세요'}
+        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -150,7 +156,7 @@ export default function Login({ onLogin }: LoginProps) {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                이메일
+                아이디 {isSignUp && '(6자리 이상 권장)'}
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -159,12 +165,12 @@ export default function Login({ onLogin }: LoginProps) {
                 <input
                   id="email"
                   name="email"
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="name@example.com"
+                  placeholder="아이디 입력"
                 />
               </div>
             </div>
@@ -191,7 +197,7 @@ export default function Login({ onLogin }: LoginProps) {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-50 p-4">
+              <div className="rounded-md bg-red-50 p-4 animate-in fade-in slide-in-from-top-1">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <AlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
@@ -207,20 +213,22 @@ export default function Login({ onLogin }: LoginProps) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed scale-95' : 'hover:scale-[1.02] active:scale-95'}`}
               >
-                {isLoading ? '처리 중...' : (isSignUp ? '가입하기' : '로그인')}
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (isSignUp ? '가입 신청하기' : '로그인')}
               </button>
             </div>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-gray-100" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">또는</span>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="px-4 bg-white text-gray-400 font-medium">소셜 계정 로그인</span>
               </div>
             </div>
 
@@ -228,27 +236,27 @@ export default function Login({ onLogin }: LoginProps) {
               <button
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className={`w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full flex items-center justify-center py-3 px-4 border border-gray-200 rounded-xl shadow-sm text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-300 active:bg-gray-100'}`}
               >
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                   alt="Google logo"
                   className="w-5 h-5 mr-3"
                 />
-                Google로 {isSignUp ? '가입' : '로그인'}
+                Google 계정으로 {isSignUp ? '가입' : '로그인'}
               </button>
             </div>
 
-            <div className="mt-6 text-center">
+            <div className="mt-8 text-center">
               <button
                 type="button"
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError('');
                 }}
-                className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors p-2 hover:bg-blue-50 rounded-lg"
               >
-                {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '계정이 없으신가요? 이메일로 가입하기'}
+                {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '계정이 없으신가요? 아이디로 가입하기'}
               </button>
             </div>
           </div>

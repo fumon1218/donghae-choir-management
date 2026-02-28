@@ -370,7 +370,7 @@ export default function Members({ userRole, userData }: MembersProps) {
                       <User className="h-6 w-6" />
                     )}
                   </div>
-                  {myProfile.role && (myProfile.role === '지휘자' || myProfile.role === '대장' || myProfile.role.includes('관리자')) && (
+                  {myProfile.role && (myProfile.role === '대장' || myProfile.role === '지휘자' || myProfile.role === '파트장' || myProfile.role === '메인반주' || myProfile.role.includes('관리자')) && (
                     <span className="absolute -top-1 -right-1 text-base drop-shadow-sm">👑</span>
                   )}
                 </div>
@@ -468,7 +468,7 @@ export default function Members({ userRole, userData }: MembersProps) {
                             <User className="h-5 w-5" />
                           )}
                         </div>
-                        {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                        {member.role && (member.role === '대장' || member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role.includes('관리자')) && (
                           <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
                         )}
                       </div>
@@ -553,7 +553,7 @@ export default function Members({ userRole, userData }: MembersProps) {
                                     <User className="h-5 w-5" />
                                   )}
                                 </div>
-                                {member.role && (member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role === '게시판 관리자' || member.role.includes('관리자')) && (
+                                {member.role && (member.role === '대장' || member.role === '지휘자' || member.role === '파트장' || member.role === '메인반주' || member.role.includes('관리자')) && (
                                   <span className="absolute -top-1 -right-1 text-sm drop-shadow-sm">👑</span>
                                 )}
                               </div>
@@ -627,7 +627,7 @@ export default function Members({ userRole, userData }: MembersProps) {
                       <User className="h-10 w-10" />
                     </div>
                   )}
-                  {selectedMember.role && (selectedMember.role === '대장' || selectedMember.role === '지휘자' || selectedMember.role === '파트장' || selectedMember.role === '메인반주' || selectedMember.role === '게시판 관리자' || selectedMember.role.includes('관리자')) && (
+                  {selectedMember.role && (selectedMember.role === '대장' || selectedMember.role === '지휘자' || selectedMember.role === '파트장' || selectedMember.role === '메인반주' || selectedMember.role.includes('관리자')) && (
                     <span className="absolute top-0 right-0 text-xl drop-shadow">👑</span>
                   )}
                   <div

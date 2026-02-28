@@ -1,9 +1,8 @@
-import { useState, FormEvent } from 'react';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { useState, useEffect, FormEvent } from 'react';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { User, Lock, AlertCircle, Mail, Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { User, Lock, AlertCircle, Mail, Loader2, Sparkles } from 'lucide-react';
 import logoUrl from '../assets/logo.jpg';
 
 interface LoginProps {
@@ -93,6 +92,24 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
+  const handleEasyJoin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      await signInAnonymously(auth);
+      onLogin();
+    } catch (err: any) {
+      console.error('Anonymous login error:', err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('현재 아이디 없이 가입하는 기능이 서버에서 비활성화되어 있습니다. 관리자(지휘자)에게 문의해 주세요. (Firebase Anonymous Auth 활성화 필요)');
+      } else {
+        setError('간편 가입 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
@@ -128,13 +145,41 @@ export default function Login({ onLogin }: LoginProps) {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 leading-tight">
           동해교회 찬양대
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-600 px-4">
           {isSignUp ? '새로운 계정을 만들고 가입 신청을 하세요' : '계정에 로그인하여 찬양대 관리를 시작하세요'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-4 shadow-xl border border-gray-100 sm:rounded-2xl sm:px-10">
+
+          {/* Easy Join Option */}
+          {isSignUp && (
+            <div className="mb-8">
+              <button
+                onClick={handleEasyJoin}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-3 py-4 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 group"
+              >
+                <Sparkles className="w-5 h-5 text-yellow-300 group-hover:animate-pulse" />
+                아이디 없이 이름으로 가입하기
+              </button>
+              <p className="mt-3 text-center text-[11px] text-gray-400 leading-tight">
+                아이디/비밀번호 생성이 어려운 분들을 위한 <b>'간편 가입'</b> 입니다.<br />
+                버튼을 누른 후 성함만 입력하시면 신청이 완료됩니다.
+              </p>
+
+              <div className="mt-8 relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-100" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="px-4 bg-white text-gray-300 font-bold tracking-widest">직접 아이디 만들기</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleEmailAuth}>
             {isSignUp && (
               <div>

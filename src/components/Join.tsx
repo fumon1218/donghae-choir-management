@@ -26,7 +26,7 @@ export default function Join({ user, onJoinSuccess }: JoinProps) {
     try {
       await addDoc(collection(db, 'join_requests'), {
         uid: user?.uid || '',
-        email: user?.email || '',
+        email: user?.email || '익명 가입 대원',
         name,
         part,
         status: 'pending',

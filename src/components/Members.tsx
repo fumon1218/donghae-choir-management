@@ -19,6 +19,7 @@ export default function Members({ userRole, userData }: MembersProps) {
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [swipedMemberId, setSwipedMemberId] = useState<string | null>(null);
 
   // Load join requests from Firestore
   useEffect(() => {
@@ -383,13 +384,23 @@ export default function Members({ userRole, userData }: MembersProps) {
                   <motion.div
                     drag={isAdmin ? "x" : false}
                     dragConstraints={{ left: -100, right: 0 }}
-                    dragElastic={0.1}
+                    dragElastic={0.05}
+                    dragMomentum={false}
+                    animate={{ x: swipedMemberId === member.id ? -100 : 0 }}
                     onDragEnd={(_, info) => {
-                      if (info.offset.x < -80) {
-                        // Keep open or trigger? The user said "reveal button"
+                      if (info.offset.x < -30) {
+                        setSwipedMemberId(member.id);
+                      } else if (info.offset.x > 30) {
+                        setSwipedMemberId(null);
                       }
                     }}
-                    onClick={() => isAdmin && setSelectedMember(member)}
+                    onClick={() => {
+                      if (swipedMemberId === member.id) {
+                        setSwipedMemberId(null);
+                      } else if (isAdmin) {
+                        setSelectedMember(member);
+                      }
+                    }}
                     className={`relative z-10 flex flex-col sm:flex-row sm:items-center p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow bg-white gap-4 group ${isAdmin ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="flex items-center gap-4 flex-1">
@@ -458,8 +469,23 @@ export default function Members({ userRole, userData }: MembersProps) {
                           <motion.div
                             drag={isAdmin ? "x" : false}
                             dragConstraints={{ left: -140, right: 0 }}
-                            dragElastic={0.1}
-                            onClick={() => isAdmin && setSelectedMember(member)}
+                            dragElastic={0.05}
+                            dragMomentum={false}
+                            animate={{ x: swipedMemberId === member.id ? -140 : 0 }}
+                            onDragEnd={(_, info) => {
+                              if (info.offset.x < -40) {
+                                setSwipedMemberId(member.id);
+                              } else if (info.offset.x > 40) {
+                                setSwipedMemberId(null);
+                              }
+                            }}
+                            onClick={() => {
+                              if (swipedMemberId === member.id) {
+                                setSwipedMemberId(null);
+                              } else if (isAdmin) {
+                                setSelectedMember(member);
+                              }
+                            }}
                             className={`relative z-10 bg-white hover:bg-gray-50 transition-colors flex items-center w-full px-4 py-3 ${isAdmin ? 'cursor-grab active:cursor-grabbing' : ''}`}
                           >
                             <div className="w-16 flex-shrink-0">

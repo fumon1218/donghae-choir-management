@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, db } from './lib/firebase';
+import { auth, googleProvider, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { LogOut, Clock, Menu } from 'lucide-react';
@@ -297,7 +297,7 @@ export default function App() {
         </main>
 
         {/* Version Information */}
-        <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-medium text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 pointer-events-none z-[100]">
+        <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-bold text-blue-600 bg-white shadow-md border border-blue-100 px-2 py-1 rounded-md pointer-events-none z-[100]">
           {APP_VERSION}
         </div>
       </div>

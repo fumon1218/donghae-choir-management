@@ -160,18 +160,20 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-gray-100 flex gap-6 items-center bg-gray-50/50">
+            <div className="bg-white rounded-2xl shadow-xl w-full md:w-[700px] lg:w-[800px] overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-6 py-4 border-b border-gray-100 flex gap-6 items-center bg-gray-50/50 overflow-x-auto no-scrollbar">
                     <button
                         onClick={() => setActiveTab('boards')}
-                        className={`flex items-center gap-2 text-base font-bold transition-colors ${activeTab === 'boards' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex items-center gap-2 text-base font-bold transition-colors flex-shrink-0 ${activeTab === 'boards' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        style={{ whiteSpace: 'nowrap', minWidth: 'max-content' }}
                     >
                         <MessagesSquare className="w-5 h-5" />
                         게시판 관리
                     </button>
                     <button
                         onClick={() => setActiveTab('menus')}
-                        className={`flex items-center gap-2 text-base font-bold transition-colors ${activeTab === 'menus' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex items-center gap-2 text-base font-bold transition-colors flex-shrink-0 ${activeTab === 'menus' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        style={{ whiteSpace: 'nowrap', minWidth: 'max-content' }}
                     >
                         <LayoutTemplate className="w-5 h-5" />
                         고정 메뉴 설정
@@ -210,9 +212,9 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
                                                 placeholder="이 게시판의 목적을 짧게 적어주세요"
                                             />
                                         </div>
-                                        <div className="flex justify-end gap-2 pt-2">
-                                            <button type="button" onClick={resetForm} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg">취소</button>
-                                            <button type="submit" className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">
+                                        <div className="flex justify-end gap-2 pt-2 sm:pt-0">
+                                            <button type="button" onClick={resetForm} className="px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">취소</button>
+                                            <button type="submit" className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors">
                                                 {editingId ? '수정 완료' : '추가하기'}
                                             </button>
                                         </div>
@@ -235,7 +237,7 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
                             </div>
 
                             {/* List */}
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {categories.length === 0 ? (
                                     <div className="text-center py-8 text-gray-500 text-sm border border-dashed border-gray-200 rounded-xl bg-gray-50">
                                         개설된 게시판이 없습니다.

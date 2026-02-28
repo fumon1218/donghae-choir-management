@@ -4,6 +4,7 @@ import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User, Lock, AlertCircle, Mail, Loader2, Sparkles } from 'lucide-react';
 import logoUrl from '../assets/logo.jpg';
+import { APP_VERSION } from '../version';
 
 interface LoginProps {
   onLogin: () => void;
@@ -400,6 +401,10 @@ export default function Login({ onLogin }: LoginProps) {
               >
                 {isSignUp ? '이미 계정이 있으신가요? 로그인하기' : '계정이 없으신가요? 아이디로 가입하기'}
               </button>
+            </div>
+
+            <div className="mt-8 text-center">
+              <p className="text-[10px] font-bold text-blue-600/40 tracking-widest">VERSION {APP_VERSION}</p>
             </div>
           </div>
         </div>

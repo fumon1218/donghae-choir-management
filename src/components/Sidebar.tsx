@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { BoardCategory } from '../data';
 import logoUrl from '../assets/logo.jpg';
 import BoardManager from './BoardManager';
+import { APP_VERSION } from '../version';
 
 interface SidebarProps {
   activeTab: string;
@@ -209,6 +210,10 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
             <LogOut className="w-4 h-4" />
             로그아웃
           </button>
+
+          <div className="pt-2 flex justify-center border-t border-gray-50 mt-2">
+            <span className="text-[10px] font-bold text-gray-300 tracking-wider">VER {APP_VERSION}</span>
+          </div>
         </div>
 
         {showBoardManager && <BoardManager onClose={() => setShowBoardManager(false)} />}

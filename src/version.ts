@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.2.4';
-export const UPDATE_SUMMARY = '데이터 실시간 서버 동기화 및 자동 마이그레이션 시스템 도입';
+export const APP_VERSION = 'v1.2.6';
+export const UPDATE_SUMMARY = '로그인 세션 유지 강화 및 버전 정보 노출 기능 추가';

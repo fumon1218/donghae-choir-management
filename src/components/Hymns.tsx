@@ -10,8 +10,9 @@ export default function Hymns({ userRole }: HymnsProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [allHymns, setAllHymns] = useState<Hymn[]>(() => {
-    const saved = localStorage.getItem('choir_hymns');
-    return saved ? JSON.parse(saved) : initialHymns;
+    // 기존 테스트 데이터를 강제로 삭제하기 위해 localStorage를 비웁니다.
+    localStorage.removeItem('choir_hymns');
+    return initialHymns;
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editHymns, setEditHymns] = useState<Hymn[]>([]);

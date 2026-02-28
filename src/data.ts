@@ -46,24 +46,7 @@ export interface Hymn {
   scoreUrl?: string;
 }
 
-export const hymns: Hymn[] = [
-  { month: 1, week: 1, title: '시온의 영광이 빛나는 아침', composer: 'L. Mason' },
-  { month: 1, week: 2, title: '내 영혼이 은총 입어', composer: 'J.M. Black' },
-  { month: 1, week: 3, title: '주 하나님 지으신 모든 세계', composer: 'Swedish Folk Melody' },
-  { month: 1, week: 4, title: '참 아름다워라', composer: 'F.L. Sheppard' },
-  { month: 2, week: 1, title: '만유의 주재', composer: 'Silesian Folk Melody' },
-  { month: 2, week: 2, title: '빛의 사자들', composer: 'H.S. Perkins' },
-  { month: 2, week: 3, title: '내 모든 소원 기도의 제목', composer: 'H.D. Loes' },
-  { month: 2, week: 4, title: '구주와 함께 나 죽었으니', composer: 'D.W. Whittle' },
-  { month: 3, week: 1, title: '예수 부활했으니', composer: 'Lyra Davidica' },
-  { month: 3, week: 2, title: '무덤에 머물러', composer: 'R. Lowry' },
-  { month: 3, week: 3, title: '할렐루야 우리 예수', composer: 'P.P. Bliss' },
-  { month: 3, week: 4, title: '주님께 영광', composer: 'G.F. Handel' },
-  { month: 4, week: 1, title: '내 주를 가까이 하게 함은', composer: 'L. Mason' },
-  { month: 4, week: 2, title: '주 예수보다 더 귀한 것은 없네', composer: 'G.B. Shea' },
-  { month: 4, week: 3, title: '나 같은 죄인 살리신', composer: 'Traditional American Melody' },
-  { month: 4, week: 4, title: '주의 친절한 팔에 안기세', composer: 'A.J. Showalter' },
-];
+export const hymns: Hymn[] = [];
 
 export interface Schedule {
   day: string;

@@ -7,7 +7,7 @@ interface HymnsProps {
 }
 
 export default function Hymns({ userRole }: HymnsProps) {
-  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
+  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole === '시작찬송 관리자';
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [allHymns, setAllHymns] = useState<Hymn[]>(() => {
     // 기존 테스트 데이터를 강제로 삭제하기 위해 localStorage를 비웁니다.

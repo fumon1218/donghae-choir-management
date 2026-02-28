@@ -10,7 +10,7 @@ interface MembersProps {
 }
 
 export default function Members({ userRole, userData }: MembersProps) {
-  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
+  const isAdmin = userRole === '대장' || userRole === '지휘자';
   const [activeTab, setActiveTab] = useState<Part | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
@@ -532,10 +532,12 @@ export default function Members({ userRole, userData }: MembersProps) {
                     <option value="">권한 없음 (일반 대원)</option>
                     <option value="대장">대장 👑</option>
                     <option value="지휘자">지휘자 👑</option>
-                    <option value="파트장">파트장 👑</option>
-                    <option value="메인반주">메인반주 👑</option>
+                    <option value="파트장">파트장</option>
+                    <option value="메인반주">메인반주</option>
                     <option value="부반주">부반주</option>
-                    <option value="게시판 관리자">게시판 관리자 👑</option>
+                    <option value="게시판 관리자">게시판 관리자 (전체)</option>
+                    <option value="자유게시판 관리자">자유게시판 관리자 ✨</option>
+                    <option value="시작찬송 관리자">시작찬송 관리자 ✨</option>
                     <option value="총무">총무</option>
                     <option value="서기">서기</option>
                   </select>

@@ -45,7 +45,12 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
 
   const EMOJI_LIST = ['😀', '😂', '🥰', '😍', '😎', '🤔', '👍', '👏', '🙏', '🎉', '❤️', '🔥', '✨', '💯', '✅', '👌', '🙌', '💪'];
 
-  const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
+  // 권한 체크 로직 세분화
+  const isSuperAdmin = userRole === '대장' || userRole === '지휘자';
+  const isGeneralBoardAdmin = userRole === '게시판 관리자';
+  const isFreeBoardAdmin = userRole === '자유게시판 관리자' && boardId === 'default';
+
+  const canManageBoard = isSuperAdmin || isGeneralBoardAdmin || isFreeBoardAdmin;
 
   useEffect(() => {
     // Fetch generic board name
@@ -415,7 +420,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                             <Edit2 className="w-4 h-4" />
                           </button>
                         )}
-                        {(post.authorUid === userData?.uid || isAdmin) && (
+                        {(post.authorUid === userData?.uid || canManageBoard) && (
                           <button
                             onClick={() => handleDelete(post.id)}
                             className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
@@ -567,7 +572,7 @@ export default function Board({ boardId = 'default', userRole, userData }: Board
                                   <div className="text-gray-400 text-[10px] sm:text-xs mt-0.5 sm:hidden">{formatDate(comment.createdAt)}</div>
                                 </div>
                                 <div className="text-gray-400 text-xs whitespace-nowrap hidden sm:block pt-0.5">{formatDate(comment.createdAt)}</div>
-                                {(comment.authorUid === userData?.uid || isAdmin) && (
+                                {(comment.authorUid === userData?.uid || canManageBoard) && (
                                   <button
                                     onClick={() => handleDeleteComment(post.id, comment)}
                                     className="text-gray-300 hover:text-rose-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity p-1"

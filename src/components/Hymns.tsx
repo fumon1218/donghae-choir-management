@@ -28,9 +28,11 @@ export default function Hymns({ userRole }: HymnsProps) {
         if (data.list) {
           setAllHymns(data.list);
         }
-      } else {
-        // Fallback to initial data if Firestore is empty
+      } else if (initialHymns && initialHymns.length > 0) {
+        // Fallback to initial data ONLY if Firestore is empty AND we have initial data
         setAllHymns(initialHymns);
+      } else {
+        setAllHymns([]);
       }
       setIsLoading(false);
     });

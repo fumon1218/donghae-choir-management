@@ -20,6 +20,7 @@ import LegacyBoard from './components/LegacyBoard';
 import Login from './components/Login';
 import Join from './components/Join';
 import OpeningHymns from './components/OpeningHymns';
+import { APP_VERSION } from './version';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -117,6 +118,57 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  // One-time Migration Helper: LocalStorage -> Firestore
+  useEffect(() => {
+    if (!user || userRole !== '지휘자') return;
+
+    const migrateData = async () => {
+      const isMigrated = localStorage.getItem('choir_data_migrated_v1');
+      if (isMigrated === 'true') return;
+
+      console.log('Starting data migration to Firestore...');
+
+      try {
+        // 1. Migrate Hymns
+        const savedHymns = localStorage.getItem('choir_hymns');
+        if (savedHymns) {
+          const hymnsList = JSON.parse(savedHymns);
+          if (Array.isArray(hymnsList) && hymnsList.length > 0) {
+            await setDoc(doc(db, 'settings', 'hymns_data'), { list: hymnsList }, { merge: true });
+            console.log('Hymns migrated.');
+          }
+        }
+
+        // 2. Migrate Schedules
+        const savedSchedules = localStorage.getItem('choir_schedules');
+        if (savedSchedules) {
+          const scheduleList = JSON.parse(savedSchedules);
+          if (Array.isArray(scheduleList) && scheduleList.length > 0) {
+            await setDoc(doc(db, 'settings', 'schedules'), { list: scheduleList }, { merge: true });
+            console.log('Schedules migrated.');
+          }
+        }
+
+        // 3. Migrate Opening Hymns
+        const savedOpeningHymns = localStorage.getItem('choir_opening_hymns');
+        if (savedOpeningHymns) {
+          const openingList = JSON.parse(savedOpeningHymns);
+          if (Array.isArray(openingList) && openingList.length > 0) {
+            await setDoc(doc(db, 'settings', 'opening_hymns'), { list: openingList }, { merge: true });
+            console.log('Opening hymns migrated.');
+          }
+        }
+
+        localStorage.setItem('choir_data_migrated_v1', 'true');
+        console.log('Migration completed successfully.');
+      } catch (error) {
+        console.error('Migration failed:', error);
+      }
+    };
+
+    migrateData();
+  }, [user, userRole]);
 
   const handleLogin = () => {
     // Firebase auth state listener handles the actual state update
@@ -246,7 +298,7 @@ export default function App() {
 
         {/* Version Information */}
         <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-medium text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm border border-gray-100 pointer-events-none z-[100]">
-          v1.0.0
+          {APP_VERSION}
         </div>
       </div>
     </div>

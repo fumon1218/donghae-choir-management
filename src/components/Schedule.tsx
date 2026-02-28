@@ -23,9 +23,11 @@ export default function Schedule({ userRole }: ScheduleProps) {
         if (data.list) {
           setSchedules(data.list);
         }
-      } else {
-        // Fallback to initial data if Firestore is empty
+      } else if (initialSchedules && initialSchedules.length > 0) {
+        // Fallback to initial data ONLY if Firestore is empty
         setSchedules(initialSchedules);
+      } else {
+        setSchedules([]);
       }
       setIsLoading(false);
     });

@@ -35,7 +35,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
           setAllOpeningHymns(data.list);
         }
       } else {
-        // Fallback to empty list if Firestore is empty
+        // Safe empty state, don't fallback to hardcoded data if we want to stay clean
         setAllOpeningHymns([]);
       }
       setIsLoading(false);

@@ -16,6 +16,9 @@ export default function Login({ onLogin }: LoginProps) {
   const [name, setName] = useState(''); // Only for signup
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isEasyMode, setIsEasyMode] = useState(false);
+  const [easyName, setEasyName] = useState('');
+  const [easyPin, setEasyPin] = useState('');
 
   // Common function to register a new user in Firestore
   const ensureUserInFirestore = async (uid: string, userEmail: string | null, userName: string | null, photoURL: string | null) => {
@@ -92,20 +95,53 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
-  const handleEasyJoin = async () => {
+  const handlePersistentEasyJoin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!easyName.trim()) {
+      setError('성함을 입력해 주세요.');
+      return;
+    }
+    if (easyPin.length < 4) {
+      setError('비밀번호 숫자 4자리를 입력해 주세요.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
+
+    // 내부적으로 사용할 이메일과 비밀번호 조합 생성
+    // 이름_핀번호@easy.donghae.church 형식
+    const easyEmail = `${easyName.trim().replace(/\s/g, '')}_${easyPin}@easy.donghae.church`.toLowerCase();
+    // Firebase 비밀번호는 최소 6자리여야 하므로 핀번호 뒤에 고정값을 붙임
+    const easyPassword = `${easyPin}0000`;
+
     try {
-      await signInAnonymously(auth);
-      onLogin();
+      // 1. 먼저 로그인을 시도
+      try {
+        await Promise.race([
+          signInWithEmailAndPassword(auth, easyEmail, easyPassword),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
+        ]);
+        onLogin();
+      } catch (loginErr: any) {
+        // 2. 계정이 없으면 회원가입을 시도
+        if (loginErr.code === 'auth/invalid-credential' || loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/wrong-password') {
+          const result: any = await Promise.race([
+            createUserWithEmailAndPassword(auth, easyEmail, easyPassword),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('auth_timeout')), 8000))
+          ]);
+          await ensureUserInFirestore(result.user.uid, result.user.email, easyName, null);
+          onLogin();
+        } else {
+          throw loginErr;
+        }
+      }
     } catch (err: any) {
-      console.error('Anonymous login error:', err);
-      if (err.code === 'auth/operation-not-allowed') {
-        setError('현재 아이디 없이 가입하는 기능이 서버에서 비활성화되어 있습니다. 관리자(지휘자)에게 문의해 주세요. (Firebase Anonymous Auth 활성화 필요)');
-      } else if (err.code === 'auth/network-request-failed') {
-        setError('네트워크 연결이 원활하지 않습니다. 인터넷 연결을 확인해 주세요.');
+      console.error('Easy join error:', err);
+      if (err.message === 'auth_timeout') {
+        setError('서버 응답이 지연되고 있습니다. 네트워크 상태를 확인하시거나 잠시 후 다시 시도해주세요.');
       } else {
-        setError(`간편 가입 오류가 발생했습니다 (${err.code || 'unknown'}): ${err.message || '잠시 후 다시 시도해 주세요.'}`);
+        setError(`가입/로그인 처리 중 오류가 발생했습니다: ${err.message || err.code}`);
       }
     } finally {
       setIsLoading(false);
@@ -155,32 +191,86 @@ export default function Login({ onLogin }: LoginProps) {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-4 shadow-xl border border-gray-100 sm:rounded-2xl sm:px-10">
 
-          {/* Easy Join Option */}
-          {isSignUp && (
-            <div className="mb-8">
+          {/* Persistent Easy Join Option - Always visible for convenience */}
+          <div className="mb-8 p-1">
+            {!isEasyMode ? (
               <button
-                onClick={handleEasyJoin}
+                onClick={() => setIsEasyMode(true)}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-3 py-4 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 group"
               >
                 <Sparkles className="w-5 h-5 text-yellow-300 group-hover:animate-pulse" />
-                아이디 없이 이름으로 가입하기
+                성함으로 간편하게 시작하기
               </button>
-              <p className="mt-3 text-center text-[11px] text-gray-400 leading-tight">
-                아이디/비밀번호 생성이 어려운 분들을 위한 <b>'간편 가입'</b> 입니다.<br />
-                버튼을 누른 후 성함만 입력하시면 신청이 완료됩니다.
-              </p>
+            ) : (
+              <form onSubmit={handlePersistentEasyJoin} className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    성함과 숫자 4자리 입력
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsEasyMode(false)}
+                    className="text-[10px] text-blue-400 hover:text-blue-600 font-bold"
+                  >
+                    취소
+                  </button>
+                </div>
 
-              <div className="mt-8 relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-100" />
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="본인 성함 입력"
+                      value={easyName}
+                      onChange={(e) => setEasyName(e.target.value)}
+                      className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-blue-200"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      placeholder="비밀번호 숫자 4자리"
+                      value={easyPin}
+                      onChange={(e) => setEasyPin(e.target.value.replace(/[^0-9]/g, ''))}
+                      className="flex-1 px-4 py-3 bg-white border border-blue-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-blue-200 text-center tracking-[0.5em] font-bold"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 min-w-16"
+                    >
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '확인'}
+                    </button>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase">
-                  <span className="px-4 bg-white text-gray-300 font-bold tracking-widest">직접 아이디 만들기</span>
-                </div>
+                <p className="mt-3 text-[10px] text-blue-400 leading-tight">
+                  * <b>처음 오신 분</b>은 가입 신청이 되고, <b>기존 회원</b>은 바로 로그인됩니다.
+                </p>
+              </form>
+            )}
+
+            {!isEasyMode && (
+              <p className="mt-3 text-center text-[11px] text-gray-400 leading-tight">
+                아이디 생성이 어려운 분들을 위한 <b>'간편 가입/로그인'</b> 입니다.
+              </p>
+            )}
+
+            <div className="mt-8 relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-100" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="px-4 bg-white text-gray-300 font-bold tracking-widest">직접 아이디 사용하기</span>
               </div>
             </div>
-          )}
+          </div>
 
           <form className="space-y-6" onSubmit={handleEmailAuth}>
             {isSignUp && (

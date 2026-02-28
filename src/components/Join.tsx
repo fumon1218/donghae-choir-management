@@ -24,9 +24,13 @@ export default function Join({ user, onJoinSuccess }: JoinProps) {
     setIsSubmitting(true);
 
     try {
+      const displayEmail = user?.email?.endsWith('@easy.donghae.church')
+        ? '간편 가입 (이름+숫자)'
+        : (user?.email || '익명 가입 대원');
+
       await addDoc(collection(db, 'join_requests'), {
         uid: user?.uid || '',
-        email: user?.email || '익명 가입 대원',
+        email: displayEmail,
         name,
         part,
         status: 'pending',

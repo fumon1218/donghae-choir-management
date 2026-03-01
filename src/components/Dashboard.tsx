@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Music, Calendar, Loader2, Megaphone, Edit3, Save, X, Plus, Trash2, Clock, MapPin } from 'lucide-react';
-import { hymns, Member, Schedule as ScheduleType } from '../data';
+import { Member, Schedule as ScheduleType, Hymn } from '../data';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -15,6 +15,7 @@ export default function Dashboard({ userRole }: DashboardProps) {
   const [adContent, setAdContent] = useState('');
   const [isEditingAd, setIsEditingAd] = useState(false);
   const [tempAdContent, setTempAdContent] = useState('');
+  const [allHymns, setAllHymns] = useState<Hymn[]>([]);
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [isManagingSchedules, setIsManagingSchedules] = useState(false);
   const [editSchedules, setEditSchedules] = useState<ScheduleType[]>([]);
@@ -33,9 +34,16 @@ export default function Dashboard({ userRole }: DashboardProps) {
       }
     });
 
+    const unsubHymns = onSnapshot(doc(db, 'settings', 'hymns_data'), (docSnap) => {
+      if (docSnap.exists()) {
+        setAllHymns(docSnap.data().list || []);
+      }
+    });
+
     return () => {
       unsubAd();
       unsubSchedules();
+      unsubHymns();
     };
   }, []);
 
@@ -89,7 +97,7 @@ export default function Dashboard({ userRole }: DashboardProps) {
   };
 
   const currentMonth = new Date().getMonth() + 1;
-  const thisMonthHymns = hymns.filter(h => h.month === currentMonth);
+  const thisMonthHymns = allHymns.filter(h => h.month === currentMonth);
 
   return (
     <div className="space-y-6">

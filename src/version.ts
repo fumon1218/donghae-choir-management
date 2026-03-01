@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.3.5';
-export const UPDATE_SUMMARY = '출석부: 연도별 이동 기능(화살표 버튼) 추가로 과거/미래 출석 데이터 관리 편의성 개선';
+export const APP_VERSION = 'v1.3.6';
+export const UPDATE_SUMMARY = '대시보드: 이번 달 찬송가 목록이 월별 찬송가 메뉴와 실시간으로 동기화되지 않던 문제 수정';

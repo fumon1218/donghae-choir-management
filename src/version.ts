@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.3.6';
-export const UPDATE_SUMMARY = '대시보드: 이번 달 찬송가 목록이 월별 찬송가 메뉴와 실시간으로 동기화되지 않던 문제 수정';
+export const APP_VERSION = 'v1.3.7';
+export const UPDATE_SUMMARY = '대시보드: 찬송가 목록의 날짜 표시를 직사각형으로 변경하고 전체적인 디자인 균형 및 가독성 개선';

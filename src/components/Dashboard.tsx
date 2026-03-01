@@ -242,24 +242,37 @@ export default function Dashboard({ userRole }: DashboardProps) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">{currentMonth}월 찬송가</h2>
           {thisMonthHymns.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
               {thisMonthHymns.map((hymn, idx) => (
-                <div key={idx} className="flex items-start p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-shrink-0 w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 text-gray-600 font-semibold text-[10px]">
-                    {hymn.date}
+                <div key={idx} className="flex items-center p-4 bg-gray-50/80 rounded-2xl border border-gray-100/50 hover:bg-gray-100 transition-all duration-200 group">
+                  <div className="flex-shrink-0 w-20 h-12 bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center shadow-sm group-hover:border-blue-200 transition-colors">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">
+                      {hymn.date?.split('-')[0] || '2026'}
+                    </span>
+                    <span className="text-sm font-black text-blue-600 leading-tight">
+                      {hymn.date?.split('-').slice(1).join('.') || '00.00'}
+                    </span>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900">{hymn.title}</p>
-                    <p className="text-xs text-gray-500">{hymn.composer}</p>
+                  <div className="ml-6 flex-1">
+                    <p className="text-sm font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors leading-tight">{hymn.title}</p>
+                    <div className="flex items-center text-[11px] text-gray-500 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-1.5"></span>
+                      작곡: {hymn.composer}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">이번 달 찬송가 목록이 없습니다.</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                <Music className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-sm">이번 달 찬송가 목록이 없습니다.</p>
+            </div>
           )}
         </div>
       </div>

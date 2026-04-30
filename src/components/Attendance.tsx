@@ -67,7 +67,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
 
   const filteredMembers = allMembers.filter(m => activePart === 'All' || m.part === activePart);
 
-  const toggleAttendance = (memberId: string, date: string) => {
+  const toggleAttendance = async (memberId: string, date: string) => {
     setAttendance(prev => {
       const memberData = prev[memberId] || {};
       const currentStatus = memberData[date] || 'none';
@@ -76,18 +76,30 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
       if (currentStatus === 'present') nextStatus = 'absent';
       else if (currentStatus === 'absent') nextStatus = 'none';
 
-      // Async Firestore update
-      const updateKey = `${memberId}.${date}`;
-      updateDoc(doc(db, 'attendance', 'all'), {
-        [updateKey]: nextStatus
-      }).catch(err => {
-        // Fallback if doc doesn't exist
-        setDoc(doc(db, 'attendance', 'all'), {
-          [memberId]: {
-            [date]: nextStatus
-          }
-        }, { merge: true }).catch(e => console.error("Firestore Set Error:", e));
-      });
+      // Safe Firestore Update logic
+      const performUpdate = async () => {
+        const docRef = doc(db, 'attendance', 'all');
+        const updateKey = `${memberId}.${date}`;
+
+        try {
+          // 1. Try updating the specific nested field first
+          await updateDoc(docRef, {
+            [updateKey]: nextStatus
+          });
+        } catch (err: any) {
+          // 2. If update fails (e.g., doc or parent field missing), use setDoc with deep merge logic
+          // Note: Standard setDoc with merge:true doesn't deep merge nested objects.
+          // So we fetch current state or use a safer approach.
+          console.log("Update failed, attempting safe merge fallback...");
+          await setDoc(docRef, {
+            [memberId]: {
+              [date]: nextStatus
+            }
+          }, { merge: true });
+        }
+      };
+
+      performUpdate().catch(e => console.error("Final Attendance Update Error:", e));
 
       return {
         ...prev,

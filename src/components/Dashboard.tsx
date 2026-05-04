@@ -113,8 +113,8 @@ export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
   };
 
   const currentMonth = new Date().getMonth() + 1;
-  // 문자열/숫자 타입 불일치 방지를 위해 Number()로 감싸서 비교합니다.
-  const thisMonthHymns = allHymns.filter(h => Number(h.month) === currentMonth);
+  // 문자열/숫자 타입 불일치 및 배열 여부를 체크하여 에러를 방지합니다.
+  const thisMonthHymns = Array.isArray(allHymns) ? allHymns.filter(h => Number(h.month) === currentMonth) : [];
 
   return (
     <div className="space-y-6">
@@ -223,13 +223,13 @@ export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-500">주간 연습</p>
-              <p className="text-2xl font-bold text-gray-900 truncate">{schedules.length}회</p>
+              <p className="text-2xl font-bold text-gray-900 truncate">{Array.isArray(schedules) ? schedules.length : 0}회</p>
             </div>
           </div>
           {isAdmin && (
             <button
               onClick={() => {
-                setEditSchedules([...schedules]);
+                setEditSchedules(Array.isArray(schedules) ? [...schedules] : []);
                 setIsManagingSchedules(true);
               }}
               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
@@ -270,17 +270,17 @@ export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
                 <div key={idx} className="flex items-center p-4 bg-gray-50/80 rounded-2xl border border-gray-100/50 hover:bg-gray-100 transition-all duration-200 group">
                   <div className="flex-shrink-0 w-20 h-12 bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center shadow-sm group-hover:border-blue-200 transition-colors">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">
-                      {hymn.date?.split('-')[0] || '2026'}
+                      {String(hymn.date || '').split('-')[0] || '2026'}
                     </span>
                     <span className="text-sm font-black text-blue-600 leading-tight">
-                      {hymn.date?.split('-').slice(1).join('.') || '00.00'}
+                      {String(hymn.date || '').split('-').slice(1).join('.') || '00.00'}
                     </span>
                   </div>
                   <div className="ml-6 flex-1">
-                    <p className="text-sm font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors leading-tight">{hymn.title}</p>
+                    <p className="text-sm font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors leading-tight">{hymn.title || '제목 없음'}</p>
                     <div className="flex items-center text-[11px] text-gray-500 font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-1.5"></span>
-                      작곡: {hymn.composer}
+                      작곡: {hymn.composer || '미상'}
                     </div>
                   </div>
                 </div>

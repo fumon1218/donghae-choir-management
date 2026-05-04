@@ -6,9 +6,10 @@ import { db } from '../lib/firebase';
 
 interface DashboardProps {
   userRole: string | null;
+  onNavigate?: (tab: string) => void;
 }
 
-export default function Dashboard({ userRole }: DashboardProps) {
+export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +31,20 @@ export default function Dashboard({ userRole }: DashboardProps) {
 
     const unsubSchedules = onSnapshot(doc(db, 'settings', 'schedules'), (docSnap) => {
       if (docSnap.exists()) {
-        setSchedules(docSnap.data().list || []);
+        const list = docSnap.data().list || [];
+        // 만약 서버 데이터가 비어있다면 기본 스케줄(data.ts)이라도 보여줍니다.
+        if (list.length === 0) {
+          import('../data').then(({ schedules: initialSchedules }) => {
+            setSchedules(initialSchedules);
+          });
+        } else {
+          setSchedules(list);
+        }
+      } else {
+        // 문서가 아예 없는 경우 기본값 로드
+        import('../data').then(({ schedules: initialSchedules }) => {
+          setSchedules(initialSchedules);
+        });
       }
     });
 
@@ -48,22 +62,24 @@ export default function Dashboard({ userRole }: DashboardProps) {
   }, []);
 
   useEffect(() => {
-    // Firestore에서 승인된 대원 목록만 실시간으로 가져오기
-    const q = query(
-      collection(db, 'users'),
-      where('role', '!=', '대기권한')
-    );
+    // Firestore에서 대원 목록 실시간으로 가져오기
+    // index 이슈 및 보안 규칙 필터링 오동작을 방지하기 위해 
+    // 서버측 where('role', '!=', '대기권한') 대신 전체를 가져와서 라이브러리 레벨에서 필터링합니다.
+    const q = query(collection(db, 'users'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const memberList: Member[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
+        // 대기권한은 대시보드 통계에서 제외
+        if (data.role === '대기권한') return;
+
         memberList.push({
           id: doc.id,
-          name: data.name || '',
+          name: data.name || data.displayName || '이름 없음',
           part: data.part || 'Orchestra',
           role: data.role,
-          imageUrl: data.imageUrl
+          imageUrl: data.imageUrl || data.photoURL
         } as Member);
       });
       setAllMembers(memberList);
@@ -97,7 +113,8 @@ export default function Dashboard({ userRole }: DashboardProps) {
   };
 
   const currentMonth = new Date().getMonth() + 1;
-  const thisMonthHymns = allHymns.filter(h => h.month === currentMonth);
+  // 문자열/숫자 타입 불일치 방지를 위해 Number()로 감싸서 비교합니다.
+  const thisMonthHymns = allHymns.filter(h => Number(h.month) === currentMonth);
 
   return (
     <div className="space-y-6">
@@ -170,7 +187,10 @@ export default function Dashboard({ userRole }: DashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
+        <button
+          onClick={() => onNavigate?.('member-status')}
+          className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 hover:shadow-md hover:border-blue-100 transition-all text-left"
+        >
           <div className="p-3 bg-blue-50 text-blue-600 rounded-lg shrink-0">
             <Users className="w-6 h-6" />
           </div>
@@ -184,7 +204,7 @@ export default function Dashboard({ userRole }: DashboardProps) {
               <p className="text-2xl font-bold text-gray-900 truncate">{totalMembers}명</p>
             )}
           </div>
-        </div>
+        </button>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">

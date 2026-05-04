@@ -98,6 +98,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
 
   const baseNavItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
+    { id: 'member-status', label: '인원 현황', icon: Users },
     { id: 'members', label: '인원 관리', icon: Users },
     { id: 'attendance', label: '출석부', icon: ClipboardCheck },
     { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },

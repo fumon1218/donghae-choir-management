@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.3.8';
-export const UPDATE_SUMMARY = '출석부: 출석 체크 시 기존 기록이 사라지던 심각한 데이터 증발 버그 수정 및 안정성 강화';
+export const APP_VERSION = 'v1.6.2';
+export const UPDATE_SUMMARY = '일반 대원 출석 체크 데이터 소실 및 동기화 이슈 해결 (v1.6.2)';

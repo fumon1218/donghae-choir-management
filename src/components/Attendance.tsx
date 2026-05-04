@@ -26,12 +26,40 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord>({});
 
-  // Load attendance records
+  // Load attendance records (Optimized to prevent data loss)
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'attendance', 'all'), (docSnap) => {
-      if (docSnap.exists()) {
-        setAttendance(docSnap.data() as AttendanceRecord);
-      }
+    const unsub = onSnapshot(collection(db, 'attendance'), (snapshot) => {
+      const newAttendance: AttendanceRecord = {};
+      const legacyDocs: AttendanceRecord[] = [];
+      const individualDocs: {id: string, data: any}[] = [];
+      
+      snapshot.forEach(docSnap => {
+        if (docSnap.id === 'all') {
+          legacyDocs.push(docSnap.data() as AttendanceRecord);
+        } else {
+          individualDocs.push({ id: docSnap.id, data: docSnap.data() });
+        }
+      });
+
+      // 1. First, apply legacy data
+      legacyDocs.forEach(legacyData => {
+        Object.keys(legacyData).forEach(mId => {
+          if (!newAttendance[mId]) newAttendance[mId] = {};
+          newAttendance[mId] = { ...newAttendance[mId], ...legacyData[mId] };
+        });
+      });
+
+      // 2. Then, apply individual member data (Priority)
+      individualDocs.forEach(item => {
+        newAttendance[item.id] = { 
+          ...(newAttendance[item.id] || {}), 
+          ...item.data 
+        } as any;
+      });
+      
+      setAttendance(newAttendance);
+    }, (error) => {
+      console.error("Error fetching attendance records:", error);
     });
     return () => unsub();
   }, []);
@@ -68,47 +96,49 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   const filteredMembers = allMembers.filter(m => activePart === 'All' || m.part === activePart);
 
   const toggleAttendance = async (memberId: string, date: string) => {
-    setAttendance(prev => {
-      const memberData = prev[memberId] || {};
-      const currentStatus = memberData[date] || 'none';
+    // 권한 체크: 지휘자/임원이 아니면 본인의 출석만 체크 가능
+    const isAdmin = userRole === '지휘자' || userRole === '임원';
+    const isOwnAttendance = userData?.uid === memberId;
 
-      let nextStatus: AttendanceStatus = 'present';
-      if (currentStatus === 'present') nextStatus = 'absent';
-      else if (currentStatus === 'absent') nextStatus = 'none';
+    if (!isAdmin && !isOwnAttendance) {
+      alert('본인의 출석만 체크할 수 있습니다.');
+      return;
+    }
 
-      // Safe Firestore Update logic
-      const performUpdate = async () => {
-        const docRef = doc(db, 'attendance', 'all');
-        const updateKey = `${memberId}.${date}`;
+    const memberData = attendance[memberId] || {};
+    const currentStatus = memberData[date] || 'none';
 
-        try {
-          // 1. Try updating the specific nested field first
-          await updateDoc(docRef, {
-            [updateKey]: nextStatus
-          });
-        } catch (err: any) {
-          // 2. If update fails (e.g., doc or parent field missing), use setDoc with deep merge logic
-          // Note: Standard setDoc with merge:true doesn't deep merge nested objects.
-          // So we fetch current state or use a safer approach.
-          console.log("Update failed, attempting safe merge fallback...");
-          await setDoc(docRef, {
-            [memberId]: {
-              [date]: nextStatus
-            }
-          }, { merge: true });
-        }
-      };
+    let nextStatus: AttendanceStatus = 'present';
+    if (currentStatus === 'present') nextStatus = 'absent';
+    else if (currentStatus === 'absent') nextStatus = 'none';
 
-      performUpdate().catch(e => console.error("Final Attendance Update Error:", e));
+    // 1. 로컬 상태 즉시 업데이트 (Optimistic Update)
+    setAttendance(prev => ({
+      ...prev,
+      [memberId]: {
+        ...memberData,
+        [date]: nextStatus
+      }
+    }));
 
-      return {
+    // 2. 서버 저장 (Side effect separated from state update)
+    try {
+      await setDoc(doc(db, 'attendance', memberId), {
+        [date]: nextStatus
+      }, { merge: true });
+    } catch (err) {
+      console.error("Firestore Save Error for member", memberId, ":", err);
+      alert('저장에 실패했습니다. 다시 시도해주세요.');
+      
+      // 저장 실패 시 로컬 상태 롤백
+      setAttendance(prev => ({
         ...prev,
         [memberId]: {
           ...memberData,
-          [date]: nextStatus
+          [date]: currentStatus
         }
-      };
-    });
+      }));
+    }
   };
 
   const getStatusIcon = (status: AttendanceStatus) => {

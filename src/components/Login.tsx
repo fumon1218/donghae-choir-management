@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { User, Lock, AlertCircle, Mail, Loader2, Sparkles } from 'lucide-react';
@@ -56,6 +56,9 @@ export default function Login({ onLogin }: LoginProps) {
     const processedEmail = email.includes('@') ? email.toLowerCase() : `${email.toLowerCase()}@donghae.church`;
 
     try {
+      // 강제 세션 유지 설정 추가
+      await setPersistence(auth, browserLocalPersistence);
+
       if (isSignUp) {
         if (!name.trim()) {
           throw new Error('이름을 입력해주세요.');
@@ -117,6 +120,9 @@ export default function Login({ onLogin }: LoginProps) {
     const easyPassword = `${easyPin}0000`;
 
     try {
+      // 강제 세션 유지 설정 추가
+      await setPersistence(auth, browserLocalPersistence);
+
       // 1. 먼저 로그인을 시도
       try {
         await Promise.race([
@@ -153,6 +159,9 @@ export default function Login({ onLogin }: LoginProps) {
     setIsLoading(true);
     setError('');
     try {
+      // 강제 세션 유지 설정 추가
+      await setPersistence(auth, browserLocalPersistence);
+      
       const result = await signInWithPopup(auth, googleProvider);
       await ensureUserInFirestore(result.user.uid, result.user.email, result.user.displayName, result.user.photoURL);
       onLogin();

@@ -30,6 +30,13 @@ export default function Schedule({ userRole }: ScheduleProps) {
         setSchedules([]);
       }
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching schedules:", error);
+      // fallback in case of permission issues
+      if (initialSchedules && initialSchedules.length > 0) {
+        setSchedules(initialSchedules);
+      }
+      setIsLoading(false);
     });
 
     return () => unsubscribe();

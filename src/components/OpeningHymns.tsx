@@ -39,12 +39,15 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
         setAllOpeningHymns([]);
       }
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching opening hymns:", error);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const currentMonthHymns = allOpeningHymns.filter(h => h.month === currentMonth);
+  const currentMonthHymns = allOpeningHymns.filter(h => Number(h.month) === currentMonth);
 
   const handlePrevMonth = () => {
     if (isEditing) return;

@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, googleProvider, db } from './lib/firebase';
+import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
-import { LogOut, Clock, Menu } from 'lucide-react';
+import { doc, collection, query, where, getDocs, setDoc, onSnapshot } from 'firebase/firestore';
+import { Clock, Menu, LogOut } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
@@ -20,6 +20,7 @@ import LegacyBoard from './components/LegacyBoard';
 import Login from './components/Login';
 import Join from './components/Join';
 import OpeningHymns from './components/OpeningHymns';
+import MemberStatus from './components/MemberStatus';
 import { APP_VERSION } from './version';
 
 export default function App() {
@@ -32,38 +33,31 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showBoardManager, setShowBoardManager] = useState(false);
 
-  useEffect(() => {
-    // 4초 동안 로딩 상태가 풀리지 않으면 강제 해제합니다. (빠른 화면 진입 보장)
-    const fallbackTimer = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+  useEffect(() => {
+    // 네트워크가 아주 느린 경우에만 안내 메시지를 띄웁니다.
+    const slowTimer = setTimeout(() => {
+      setIsSlowConnection(true);
+    }, 5000);
+
+    let unsubscribeUser: () => void;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        try {
-          const userRef = doc(db, 'users', currentUser.uid);
-          // Firestore 응답 지연 시 2초 이상 대기하지 않고 즉각 화면을 로드하도록 단축
-          const userSnap: any = await Promise.race([
-            getDoc(userRef),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 2000))
-          ]);
-
+        // 유저 정보 및 권한 실시간 동기화
+        const userRef = doc(db, 'users', currentUser.uid);
+        unsubscribeUser = onSnapshot(userRef, async (userSnap) => {
           let role = '대기권한';
           let data = null;
 
-          // 기존 Firestore에 권한이 있다면 해당 권한 사용
           if (userSnap.exists()) {
             data = { uid: currentUser.uid, ...userSnap.data() };
-            // 만약 DB에 이름이나 사진이 누락된 경우 구글 계정 정보를 폴백으로 사용
             if (!data.name) data.name = currentUser.displayName || '';
             if (!data.imageUrl) data.imageUrl = currentUser.photoURL || '';
-
-            if (data?.role) {
-              role = data.role;
-            }
+            if (data?.role) role = data.role;
           } else {
-            // Firestore 문서가 아직 없는 경우에도 기본 데이터 설정 (uid 필수!)
             data = {
               uid: currentUser.uid,
               name: currentUser.displayName || '',
@@ -72,7 +66,7 @@ export default function App() {
             };
           }
 
-          // 자동 최고 관리자(지휘자) 승급 로직: 이름 또는 이메일 기반
+          // 자동 지휘자 승급 로직
           const isAutoAdmin =
             currentUser.email === 'fumon1218@gmail.com' ||
             currentUser.displayName?.includes('박선생') ||
@@ -85,7 +79,6 @@ export default function App() {
           }
 
           let pendingReq = false;
-          // check if they have a pending request if neither auto admin nor existing active local role
           if (currentRole === '대기권한') {
             try {
               const q = query(collection(db, 'join_requests'), where('uid', '==', currentUser.uid), where('status', '==', 'pending'));
@@ -99,24 +92,27 @@ export default function App() {
           setHasPendingRequest(pendingReq);
           setUserRole(currentRole);
           setUserData(data);
-
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          setUserRole('대기권한');
-        } finally {
           setLoading(false);
-        }
+          clearTimeout(slowTimer);
+        }, (error) => {
+          console.error("Error listening to user doc:", error);
+          setLoading(false);
+          clearTimeout(slowTimer);
+          setUserRole('대기권한');
+        });
       } else {
         setUserRole(null);
         setUserData(null);
         setHasPendingRequest(false);
         setLoading(false);
+        clearTimeout(slowTimer);
       }
     });
 
     return () => {
-      clearTimeout(fallbackTimer);
-      unsubscribe();
+      clearTimeout(slowTimer);
+      unsubscribeAuth();
+      if (unsubscribeUser) unsubscribeUser();
     };
   }, []);
 
@@ -128,41 +124,32 @@ export default function App() {
       const isMigrated = localStorage.getItem('choir_data_migrated_v1');
       if (isMigrated === 'true') return;
 
-      console.log('Starting data migration to Firestore...');
-
       try {
-        // 1. Migrate Hymns
         const savedHymns = localStorage.getItem('choir_hymns');
         if (savedHymns) {
           const hymnsList = JSON.parse(savedHymns);
           if (Array.isArray(hymnsList) && hymnsList.length > 0) {
             await setDoc(doc(db, 'settings', 'hymns_data'), { list: hymnsList }, { merge: true });
-            console.log('Hymns migrated.');
           }
         }
 
-        // 2. Migrate Schedules
         const savedSchedules = localStorage.getItem('choir_schedules');
         if (savedSchedules) {
           const scheduleList = JSON.parse(savedSchedules);
           if (Array.isArray(scheduleList) && scheduleList.length > 0) {
             await setDoc(doc(db, 'settings', 'schedules'), { list: scheduleList }, { merge: true });
-            console.log('Schedules migrated.');
           }
         }
 
-        // 3. Migrate Opening Hymns
         const savedOpeningHymns = localStorage.getItem('choir_opening_hymns');
         if (savedOpeningHymns) {
           const openingList = JSON.parse(savedOpeningHymns);
           if (Array.isArray(openingList) && openingList.length > 0) {
             await setDoc(doc(db, 'settings', 'opening_hymns'), { list: openingList }, { merge: true });
-            console.log('Opening hymns migrated.');
           }
         }
 
         localStorage.setItem('choir_data_migrated_v1', 'true');
-        console.log('Migration completed successfully.');
       } catch (error) {
         console.error('Migration failed:', error);
       }
@@ -170,10 +157,6 @@ export default function App() {
 
     migrateData();
   }, [user, userRole]);
-
-  const handleLogin = () => {
-    // Firebase auth state listener handles the actual state update
-  };
 
   const handleLogout = async () => {
     try {
@@ -187,25 +170,26 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        {isSlowConnection && (
+          <div className="animate-in fade-in duration-500">
+            <p className="text-sm font-bold text-gray-500">서버와 연결을 확인 중입니다...</p>
+            <p className="text-xs text-gray-400 mt-1">잠시만 기다려 주세요.</p>
+          </div>
+        )}
       </div>
     );
   }
 
-  // 1. 모든 접속자는 로그인이 필수
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={() => { }} />;
   }
 
-  // 2. 미승인 회원(대기권한) 처리 로직
   if (userRole === '대기권한') {
-    // 신청 내역이 없다면 (루트로 들어왔든 접속했든) 반드시 가입 폼 표시
     if (!hasPendingRequest) {
       return <Join user={user} onJoinSuccess={() => setHasPendingRequest(true)} />;
     }
-
-    // 신청 내역이 있으면 승인 대기 화면
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -236,26 +220,20 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard userRole={userRole} />;
-      case 'members':
-        return <Members userRole={userRole} userData={userData} />;
-      case 'attendance':
-        return <Attendance userData={userData} userRole={userRole} />;
-      case 'opening-hymns':
-        return <OpeningHymns userRole={userRole} />;
-      case 'hymns':
-        return <Hymns userRole={userRole} />;
-      case 'schedule':
-        return <Schedule userRole={userData?.role || null} />;
-      case 'legacy-board':
-        return <LegacyBoard userData={userData} />;
+      case 'dashboard': return <Dashboard userRole={userRole} onNavigate={setActiveTab} />;
+      case 'member-status': return <MemberStatus userData={userData} userRole={userRole} />;
+      case 'members': return <Members userRole={userRole} userData={userData} />;
+      case 'attendance': return <Attendance userData={userData} userRole={userRole} />;
+      case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
+      case 'hymns': return <Hymns userRole={userRole} />;
+      case 'schedule': return <Schedule userRole={userRole} />;
+      case 'legacy-board': return <LegacyBoard userData={userData} />;
       default:
         if (activeTab.startsWith('board_')) {
           const boardId = activeTab.replace('board_', '');
           return <Board boardId={boardId} userRole={userRole} userData={userData} />;
         }
-        return <Dashboard userRole={userRole} />;
+        return <Dashboard userRole={userRole} onNavigate={setActiveTab} />;
     }
   };
 
@@ -276,7 +254,6 @@ export default function App() {
       />
 
       <div className="flex-1 flex flex-col min-w-0 md:ml-64 relative min-h-screen">
-        {/* Mobile Header */}
         <div className="md:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-gray-900 tracking-tight">
@@ -298,7 +275,6 @@ export default function App() {
           </div>
         </main>
 
-        {/* Version Information */}
         <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-bold text-blue-600 bg-white shadow-md border border-blue-100 px-2 py-1 rounded-md pointer-events-none z-[100]">
           {APP_VERSION}
         </div>

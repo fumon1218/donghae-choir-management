@@ -35,12 +35,18 @@ export default function Hymns({ userRole }: HymnsProps) {
         setAllHymns([]);
       }
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching hymns:", error);
+      if (initialHymns && initialHymns.length > 0) {
+        setAllHymns(initialHymns);
+      }
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const currentMonthHymns = allHymns.filter(h => h.month === currentMonth);
+  const currentMonthHymns = allHymns.filter(h => Number(h.month) === currentMonth);
 
   const handlePrevMonth = () => {
     if (isEditing) return;

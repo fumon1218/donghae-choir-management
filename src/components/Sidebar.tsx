@@ -104,7 +104,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
-    { id: 'mp3-player', label: '연습 음원', icon: Headphones },
+    { id: 'mp3-player', label: '찬송가 연습', icon: Headphones },
     { id: 'legacy-board', label: '자유게시판 (구버전)', icon: MessageSquare },
   ];
 

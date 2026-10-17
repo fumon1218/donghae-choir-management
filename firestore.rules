@@ -35,6 +35,27 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+
+    // 찬송가 연습 자료 (저작권 자료): 승인된 로그인 사용자만 읽기, 대장·지휘자만 쓰기
+    function approvedUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role != '대기권한';
+    }
+    function conductorUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['대장', '지휘자'];
+    }
+    match /hymn_meta/{id} {
+      allow read: if approvedUser();
+      allow write: if conductorUser();
+    }
+    match /hymn_songs/{id} {
+      allow read: if approvedUser();
+      allow write: if conductorUser();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

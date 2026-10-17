@@ -6,9 +6,26 @@ import { db } from '../lib/firebase';
 
 interface HymnsProps {
   userRole: string | null;
+  /** 찬송가 연습에서 악보·음원 열기 */
+  onOpenPractice?: (book: string, n: number) => void;
 }
 
-export default function Hymns({ userRole }: HymnsProps) {
+function PracticeButton({ hymn, onOpen, className = '' }: { hymn: Hymn; onOpen?: (book: string, n: number) => void; className?: string }) {
+  if (!onOpen || !hymn.book || !hymn.num) return null;
+  return (
+    <button
+      onClick={() => onOpen(hymn.book!, hymn.num!)}
+      className={`px-3 py-1.5 text-sm font-medium rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors whitespace-nowrap ${className}`}
+      title="찬송가 연습에서 악보와 음원 열기"
+    >
+      ▶ {BOOK_LABEL[hymn.book] ?? hymn.book} {hymn.num}장
+    </button>
+  );
+}
+
+const BOOK_LABEL: Record<string, string> = { hymn: '찬송가', grace: '은혜찬송가' };
+
+export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole === '시작찬송 관리자';
   const [allHymns, setAllHymns] = useState<Hymn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,6 +307,7 @@ export default function Hymns({ userRole }: HymnsProps) {
                   <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">날짜</th>
                   <th className="p-4 text-xs font-semibold text-gray-500">제목 및 작곡</th>
                   <th className="p-4 text-xs font-semibold text-gray-500 w-24 text-center">악보</th>
+                  <th className="p-4 text-xs font-semibold text-gray-500 w-28 text-center">연습</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -319,6 +337,9 @@ export default function Hymns({ userRole }: HymnsProps) {
                       >
                         <ImageIcon className="w-4 h-4" />
                       </button>
+                    </td>
+                    <td className="p-4 text-center">
+                      <PracticeButton hymn={hymn} onOpen={onOpenPractice} />
                     </td>
                   </tr>
                 ))}
@@ -360,6 +381,29 @@ export default function Hymns({ userRole }: HymnsProps) {
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                           placeholder="작곡가 입력"
                         />
+                      </div>
+                      <div className="flex-shrink-0 w-full sm:w-auto">
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">연습 연결</label>
+                        <div className="flex gap-1">
+                          <select
+                            value={hymn.book ?? ''}
+                            onChange={(e) => handleUpdateHymn(idx, 'book', e.target.value)}
+                            className="px-2 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                          >
+                            <option value="">없음</option>
+                            <option value="hymn">찬송가</option>
+                            <option value="grace">은혜찬송</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            value={hymn.num ?? ''}
+                            disabled={!hymn.book}
+                            onChange={(e) => handleUpdateHymn(idx, 'num', e.target.value === '' ? 0 : Number(e.target.value))}
+                            className="w-20 px-2 py-2 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50"
+                            placeholder="번호"
+                          />
+                        </div>
                       </div>
                       <div className="w-16 sm:w-20 lg:w-32 flex-shrink-0">
                         <label className="block text-[10px] font-semibold text-gray-400 uppercase mb-1">악보 이미지</label>
@@ -422,6 +466,7 @@ export default function Hymns({ userRole }: HymnsProps) {
                           <ImageIcon className="w-4 h-4 hidden sm:inline-block" />
                           {hymn.scoreUrl ? '악보 보기' : '악보 없음'}
                         </button>
+                        <PracticeButton hymn={hymn} onOpen={onOpenPractice} className="mt-2" />
                       </div>
                     </>
                   )}

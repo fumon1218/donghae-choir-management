@@ -21,6 +21,7 @@ import Login from './components/Login';
 import Join from './components/Join';
 import OpeningHymns from './components/OpeningHymns';
 import MemberStatus from './components/MemberStatus';
+import Mp3Player from './components/Mp3Player';
 import { APP_VERSION } from './version';
 
 export default function App() {
@@ -227,6 +228,7 @@ export default function App() {
       case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
       case 'hymns': return <Hymns userRole={userRole} />;
       case 'schedule': return <Schedule userRole={userRole} />;
+      case 'mp3-player': return <Mp3Player />;
       case 'legacy-board': return <LegacyBoard userData={userData} />;
       default:
         if (activeTab.startsWith('board_')) {

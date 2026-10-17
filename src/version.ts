@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.6.4';
-export const UPDATE_SUMMARY = 'vite base 경로 오류 수정으로 인한 빈 화면(404 Not Found) 완전 해결 (v1.6.4)';
+export const APP_VERSION = 'v1.6.5';
+export const UPDATE_SUMMARY = '출석부: 총무·서기·대장·파트장 권한 오류 수정, 저장·불러오기 오류 원인 표시 (v1.6.5)';

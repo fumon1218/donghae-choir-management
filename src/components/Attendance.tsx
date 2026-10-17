@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { members as initialMembers, Part, Member } from '../data';
 import { getPracticeDates, PracticeDate } from '../utils/dateUtils';
 import { ChevronLeft, ChevronRight, Check, X, Save, Users, Smartphone, Monitor } from 'lucide-react';
@@ -13,6 +13,18 @@ interface AttendanceRecord {
   };
 }
 
+/** 모든 대원의 출석을 대신 체크할 수 있는 직책. 파트장은 자기 파트 대원만, 그 외 대원은 본인만. */
+const FULL_ACCESS_ROLES = ['대장', '지휘자', '총무', '서기'];
+
+/** Firestore 오류를 사람이 읽을 수 있는 문장으로 */
+const describeError = (err: any): string => {
+  const code = String(err?.code || '');
+  if (code.includes('permission-denied')) return '권한이 없습니다 (permission-denied). Firestore 보안 규칙이 배포되어 있는지 확인해 주세요.';
+  if (code.includes('unavailable') || code.includes('network')) return '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.';
+  if (code.includes('unauthenticated')) return '로그인이 풀렸습니다. 다시 로그인해 주세요.';
+  return `알 수 없는 오류${code ? ` (${code})` : ''}`;
+};
+
 interface AttendanceProps {
   userData?: any;
   userRole?: string | null;
@@ -25,6 +37,14 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord>({});
+  // 연속으로 빠르게 눌러도 항상 최신 상태를 보도록 ref로도 들고 있습니다.
+  const attendanceRef = useRef<AttendanceRecord>({});
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { attendanceRef.current = attendance; }, [attendance]);
+
+  const isFullAccess = !!userRole && FULL_ACCESS_ROLES.includes(userRole);
+  const canEditMember = (m: Member) =>
+    isFullAccess || userData?.uid === m.id || (userRole === '파트장' && !!userData?.part && userData.part === m.part);
 
   // Load attendance records (Optimized to prevent data loss)
   useEffect(() => {
@@ -60,6 +80,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
       setAttendance(newAttendance);
     }, (error) => {
       console.error("Error fetching attendance records:", error);
+      setNotice(`출석 기록을 불러오지 못했습니다. ${describeError(error)}`);
     });
     return () => unsub();
   }, []);
@@ -85,6 +106,9 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
 
       // 이름순으로 정렬 (이름이 없는 경우 '이름 없음'이 되므로 안전함)
       setAllMembers(usersData.sort((a, b) => a.name.localeCompare(b.name)));
+    }, (error) => {
+      console.error("Error fetching members:", error);
+      setNotice(`대원 명단을 불러오지 못했습니다. ${describeError(error)}`);
     });
 
     return () => unsubscribe();
@@ -95,48 +119,41 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
 
   const filteredMembers = allMembers.filter(m => activePart === 'All' || m.part === activePart);
 
-  const toggleAttendance = async (memberId: string, date: string) => {
-    // 권한 체크: 지휘자/임원이 아니면 본인의 출석만 체크 가능
-    const isAdmin = userRole === '지휘자' || userRole === '임원';
-    const isOwnAttendance = userData?.uid === memberId;
-
-    if (!isAdmin && !isOwnAttendance) {
-      alert('본인의 출석만 체크할 수 있습니다.');
+  const toggleAttendance = async (member: Member, date: string) => {
+    const memberId = member.id;
+    if (!canEditMember(member)) {
+      setNotice(
+        userRole === '파트장'
+          ? '파트장은 본인 파트 대원의 출석만 체크할 수 있습니다.'
+          : '본인의 출석만 체크할 수 있습니다.'
+      );
       return;
     }
+    setNotice(null);
 
-    const memberData = attendance[memberId] || {};
+    const memberData = attendanceRef.current[memberId] || {};
     const currentStatus = memberData[date] || 'none';
 
     let nextStatus: AttendanceStatus = 'present';
     if (currentStatus === 'present') nextStatus = 'absent';
     else if (currentStatus === 'absent') nextStatus = 'none';
 
-    // 1. 로컬 상태 즉시 업데이트 (Optimistic Update)
+    // 1. 화면을 먼저 바꿉니다. (이 칸만 바꾸고 같은 대원의 다른 칸은 최신 값을 유지)
     setAttendance(prev => ({
       ...prev,
-      [memberId]: {
-        ...memberData,
-        [date]: nextStatus
-      }
+      [memberId]: { ...(prev[memberId] || {}), [date]: nextStatus }
     }));
 
-    // 2. 서버 저장 (Side effect separated from state update)
+    // 2. 서버에 저장 (이 칸만 merge)
     try {
-      await setDoc(doc(db, 'attendance', memberId), {
-        [date]: nextStatus
-      }, { merge: true });
+      await setDoc(doc(db, 'attendance', memberId), { [date]: nextStatus }, { merge: true });
     } catch (err) {
       console.error("Firestore Save Error for member", memberId, ":", err);
-      alert('저장에 실패했습니다. 다시 시도해주세요.');
-      
-      // 저장 실패 시 로컬 상태 롤백
+      setNotice(`저장하지 못했습니다. ${describeError(err)}`);
+      // 실패하면 이 칸만 원래 값으로 되돌립니다.
       setAttendance(prev => ({
         ...prev,
-        [memberId]: {
-          ...memberData,
-          [date]: currentStatus
-        }
+        [memberId]: { ...(prev[memberId] || {}), [date]: currentStatus }
       }));
     }
   };
@@ -210,6 +227,13 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
         </div>
       </div>
 
+      {notice && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} aria-label="알림 닫기" className="shrink-0 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
       {isMobileView ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {filteredMembers.map(member => (
@@ -227,8 +251,10 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
                     <div key={pd.date} className="flex flex-col items-center gap-1">
                       <span className="text-[10px] text-gray-500 font-medium">{pd.formattedDate}</span>
                       <button
-                        onClick={() => toggleAttendance(member.id, pd.date)}
-                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all duration-200 active:scale-95 ${getStatusBg(status).replace('border-', 'border-b-')} shadow-sm`}
+                        onClick={() => toggleAttendance(member, pd.date)}
+                            disabled={!canEditMember(member)}
+                        title={canEditMember(member) ? undefined : '본인(또는 권한 있는 직책)만 체크할 수 있어요'}
+                        className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all duration-200 active:scale-95 ${getStatusBg(status).replace('border-', 'border-b-')} shadow-sm disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
                         {getStatusIcon(status)}
                       </button>
@@ -273,8 +299,10 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
                       return (
                         <td key={pd.date} className="p-2 text-center min-w-[80px]">
                           <button
-                            onClick={() => toggleAttendance(member.id, pd.date)}
-                            className={`w-10 h-10 rounded-lg border flex items-center justify-center mx-auto transition-all duration-200 ${getStatusBg(status)}`}
+                            onClick={() => toggleAttendance(member, pd.date)}
+                            disabled={!canEditMember(member)}
+                        title={canEditMember(member) ? undefined : '본인(또는 권한 있는 직책)만 체크할 수 있어요'}
+                            className={`w-10 h-10 rounded-lg border flex items-center justify-center mx-auto transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${getStatusBg(status)}`}
                           >
                             {getStatusIcon(status)}
                           </button>
@@ -304,7 +332,7 @@ export default function Attendance({ userData, userRole }: AttendanceProps) {
             <span>미체크</span>
           </div>
         </div>
-        <p>* 클릭하여 상태를 변경합니다 (미체크 → 참석 → 불참)</p>
+        <p>* 눌러서 상태를 변경합니다 (미체크 → 참석 → 불참). {isFullAccess ? '전체 대원 체크 가능' : userRole === '파트장' ? '본인과 우리 파트 대원 체크 가능' : '본인 칸만 체크 가능'}</p>
       </div>
     </div>
   );

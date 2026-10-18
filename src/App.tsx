@@ -13,7 +13,6 @@ import Dashboard from './components/Dashboard';
 import Members from './components/Members';
 import Hymns from './components/Hymns';
 import Schedule from './components/Schedule';
-import Attendance from './components/Attendance';
 import BoardManager from './components/BoardManager';
 import Board from './components/Board';
 import LegacyBoard from './components/LegacyBoard';
@@ -225,7 +224,6 @@ export default function App() {
       case 'dashboard': return <Dashboard userRole={userRole} onNavigate={setActiveTab} />;
       case 'member-status': return <MemberStatus userData={userData} userRole={userRole} />;
       case 'members': return <Members userRole={userRole} userData={userData} />;
-      case 'attendance': return <Attendance userData={userData} userRole={userRole} />;
       case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
       case 'hymns': return <Hymns userRole={userRole} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
       case 'schedule': return <Schedule userRole={userRole} />;

@@ -1,4 +1,4 @@
-import { Headphones, LayoutDashboard, Users, Music, Calendar, ClipboardCheck, LogOut, MessageSquare, BookOpen, Settings, Edit2, X } from 'lucide-react';
+import { Headphones, LayoutDashboard, Users, Music, Calendar, LogOut, MessageSquare, BookOpen, Settings, Edit2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
@@ -100,7 +100,6 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'member-status', label: '인원 현황', icon: Users },
     { id: 'members', label: '인원 관리', icon: Users },
-    { id: 'attendance', label: '출석부', icon: ClipboardCheck },
     { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
@@ -117,7 +116,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     }));
 
   const navItems = [
-    ...configuredBaseItems.slice(0, 3), // 대시보드, 인원, 출석부 삽입
+    ...configuredBaseItems.slice(0, 3), // 대시보드, 인원 현황·관리 삽입
     ...boardCategories.map(board => ({    // 게시판(동적) 삽입
       id: `board_${board.id}`,
       label: board.name,

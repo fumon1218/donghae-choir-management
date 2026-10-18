@@ -23,7 +23,6 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
         { id: 'hymns', defaultLabel: '월별 찬송가' },
         { id: 'schedule', defaultLabel: '연습 스케줄' },
         { id: 'mp3-player', defaultLabel: '찬송가 연습' },
-        { id: 'church-calendar', defaultLabel: '교회 캘린더' },
         { id: 'bible-memory', defaultLabel: '암송수첩' },
         { id: 'legacy-board', defaultLabel: '자유게시판 (구버전)' },
     ];

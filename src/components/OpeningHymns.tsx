@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, CalendarDays, Smartphone, Monitor, Loader2 } from 'lucide-react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import HymnPicker from './HymnPicker';
 
 interface OpeningHymn {
   id: string;
@@ -10,6 +11,9 @@ interface OpeningHymn {
   type: 'Sunday' | 'Wednesday';
   leader: string;
   title: string;
+  /** 찬송가 찾기로 고른 곡 (선택) */
+  book?: string;
+  num?: number;
 }
 
 interface OpeningHymnsProps {
@@ -25,6 +29,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   // Load opening hymns from Firestore
   useEffect(() => {
@@ -95,10 +100,22 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
   };
 
   const handleAddHymn = (type: 'Sunday' | 'Wednesday') => {
+    // 주일(일요일)·수요일 중 아직 목록에 없는 다음 날짜를 기본값으로 채웁니다.
+    const year = new Date().getFullYear();
+    const wd = type === 'Sunday' ? 0 : 3;
+    const used = new Set(editList.filter(h => h.type === type).map(h => h.date));
+    const d = new Date(year, currentMonth - 1, 1);
+    while (d.getDay() !== wd) d.setDate(d.getDate() + 1);
+    let defaultDate = '';
+    while (d.getMonth() === currentMonth - 1) {
+      const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!used.has(s)) { defaultDate = s; break; }
+      d.setDate(d.getDate() + 7);
+    }
     const newHymn: OpeningHymn = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       month: currentMonth,
-      date: '',
+      date: defaultDate,
       type,
       leader: '',
       title: ''
@@ -156,7 +173,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                       </span>
                     </td>
                     <td className="p-3">
-                      <span className="text-sm font-bold text-gray-900">{hymn.title}</span>
+                      <span className="text-sm font-bold text-gray-900">{hymn.num ? `${hymn.num}장 ` : ''}{hymn.title}</span>
                     </td>
                   </tr>
                 ))}
@@ -200,6 +217,13 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                         />
                       </div>
                       <button
+                        type="button"
+                        onClick={() => setPickerFor(hymn.id)}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap self-end"
+                      >
+                        찾기
+                      </button>
+                      <button
                         onClick={() => handleDeleteHymn(hymn.id)}
                         className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       >
@@ -216,7 +240,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
                             {hymn.leader}
                           </span>
-                          <h3 className="text-sm font-bold text-gray-900">{hymn.title}</h3>
+                          <h3 className="text-sm font-bold text-gray-900">{hymn.num ? `${hymn.num}장 ` : ''}{hymn.title}</h3>
                         </div>
                       </div>
                     </div>
@@ -244,6 +268,17 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
 
   return (
     <div className="space-y-6">
+      {pickerFor !== null && (
+        <HymnPicker
+          initialBook={editList.find(h => h.id === pickerFor)?.book}
+          onClose={() => setPickerFor(null)}
+          onPick={(book, entry) => {
+            const id = pickerFor;
+            setEditList(list => list.map(h => (h.id === id ? { ...h, book, num: entry.n, title: entry.title } : h)));
+            setPickerFor(null);
+          }}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg">

@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.9.0';
-export const UPDATE_SUMMARY = '대시보드 새 디자인 (이번 주일 찬양·다음 연습·바로가기) (v1.9.0)';
+export const APP_VERSION = 'v1.9.1';
+export const UPDATE_SUMMARY = '대시보드 일러스트 적용(아이콘·파트 그림·종이 질감·폰 히어로) (v1.9.1)';

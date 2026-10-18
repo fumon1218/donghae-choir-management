@@ -14,6 +14,10 @@ interface OpeningHymn {
   /** 찬송가 찾기로 고른 곡 (선택) */
   book?: string;
   num?: number;
+  /** 같은 날 두 번째 곡 (선택) */
+  title2?: string;
+  book2?: string;
+  num2?: number;
 }
 
 interface OpeningHymnsProps {
@@ -29,7 +33,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<{ id: string; slot: 1 | 2 } | null>(null);
 
   // Load opening hymns from Firestore
   useEffect(() => {
@@ -76,7 +80,9 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
   const handleSaveEdit = async () => {
     setIsLoading(true);
     try {
-      const updatedHymns = [...allOpeningHymns.filter(h => h.month !== currentMonth), ...editList].sort((a, b) => {
+      // Firestore는 undefined 값을 저장할 수 없어 제거합니다.
+      const cleanEdit = editList.map(h => JSON.parse(JSON.stringify(h)) as OpeningHymn);
+      const updatedHymns = [...allOpeningHymns.filter(h => h.month !== currentMonth), ...cleanEdit].sort((a, b) => {
         if (a.month !== b.month) return a.month - b.month;
         return a.date.localeCompare(b.date);
       });
@@ -174,6 +180,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                     </td>
                     <td className="p-3">
                       <span className="text-sm font-bold text-gray-900">{hymn.num ? `${hymn.num}장 ` : ''}{hymn.title}</span>
+                      {hymn.title2 && <span className="block text-sm font-bold text-gray-900 mt-0.5">{hymn.num2 ? `${hymn.num2}장 ` : ''}{hymn.title2}</span>}
                     </td>
                   </tr>
                 ))}
@@ -186,6 +193,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
               list.map((hymn, idx) => (
                 <div key={hymn.id} className="p-4 hover:bg-gray-50 transition-colors">
                   {isEditing ? (
+                    <div className="space-y-2">
                     <div className="flex flex-col sm:flex-row items-end gap-3">
                       <div className="w-32 flex-shrink-0">
                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">날짜</label>
@@ -218,7 +226,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setPickerFor(hymn.id)}
+                        onClick={() => setPickerFor({ id: hymn.id, slot: 1 })}
                         className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap self-end"
                       >
                         찾기
@@ -230,6 +238,44 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                    {hymn.title2 !== undefined ? (
+                      <div className="flex items-end gap-3 sm:pl-[8.5rem]">
+                        <div className="flex-1 w-full">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">2번째 곡 제목</label>
+                          <input
+                            type="text"
+                            value={hymn.title2}
+                            onChange={(e) => handleUpdateHymn(editList.indexOf(hymn), 'title2', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="제목 입력"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPickerFor({ id: hymn.id, slot: 2 })}
+                          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                        >
+                          찾기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditList(list => list.map(h => (h.id === hymn.id ? { ...h, title2: undefined, book2: undefined, num2: undefined } : h)))}
+                          className="px-2 py-1.5 text-xs text-gray-500 hover:text-rose-600 whitespace-nowrap"
+                        >
+                          2번째 곡 빼기
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateHymn(editList.indexOf(hymn), 'title2', '')}
+                        className="sm:ml-[8.5rem] flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold hover:bg-gray-200"
+                      >
+                        <Plus className="w-3 h-3" />
+                        1곡 더 추가
+                      </button>
+                    )}
+                    </div>
                   ) : (
                     <div className="flex items-center gap-4">
                       <div className={`w-20 h-10 rounded-xl bg-${accentColor}-50 flex items-center justify-center text-${accentColor}-600 font-bold text-xs border border-${accentColor}-100 flex-shrink-0`}>
@@ -240,7 +286,10 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
                             {hymn.leader}
                           </span>
-                          <h3 className="text-sm font-bold text-gray-900">{hymn.num ? `${hymn.num}장 ` : ''}{hymn.title}</h3>
+                          <h3 className="text-sm font-bold text-gray-900">
+                            {hymn.num ? `${hymn.num}장 ` : ''}{hymn.title}
+                            {hymn.title2 && <span className="block mt-0.5">{hymn.num2 ? `${hymn.num2}장 ` : ''}{hymn.title2}</span>}
+                          </h3>
                         </div>
                       </div>
                     </div>
@@ -270,11 +319,13 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
     <div className="space-y-6">
       {pickerFor !== null && (
         <HymnPicker
-          initialBook={editList.find(h => h.id === pickerFor)?.book}
+          initialBook={(() => { const h = editList.find(x => x.id === pickerFor.id); return pickerFor.slot === 2 ? h?.book2 : h?.book; })()}
           onClose={() => setPickerFor(null)}
           onPick={(book, entry) => {
-            const id = pickerFor;
-            setEditList(list => list.map(h => (h.id === id ? { ...h, book, num: entry.n, title: entry.title } : h)));
+            const { id, slot } = pickerFor;
+            setEditList(list => list.map(h => (h.id !== id ? h : slot === 2
+              ? { ...h, book2: book, num2: entry.n, title2: entry.title }
+              : { ...h, book, num: entry.n, title: entry.title })));
             setPickerFor(null);
           }}
         />

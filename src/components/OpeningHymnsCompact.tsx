@@ -11,6 +11,8 @@ interface OpeningHymn {
   leader: string;
   title: string;
   num?: number;
+  title2?: string;
+  num2?: number;
 }
 
 /** 월별 찬송가 화면 아래에 함께 보여 주는, 작게 줄인 시작찬송 목록 (보기 전용). */
@@ -54,7 +56,10 @@ export default function OpeningHymnsCompact({ month }: { month: number }) {
                       <span className={`shrink-0 px-1.5 py-0.5 rounded border text-[11px] font-bold ${g.chip}`}>
                         {h.date ? h.date.split('-').slice(1).join('.') : '-'}
                       </span>
-                      <span className="text-[13px] font-medium text-gray-900 truncate">{h.num ? `${h.num}장 ` : ''}{h.title}</span>
+                      <span className="text-[13px] font-medium text-gray-900 truncate">
+                        {h.num ? `${h.num}장 ` : ''}{h.title}
+                        {h.title2 && <span className="text-gray-500"> · {h.num2 ? `${h.num2}장 ` : ''}{h.title2}</span>}
+                      </span>
                       {h.leader && <span className="ml-auto shrink-0 text-[11px] text-gray-400">{h.leader}</span>}
                     </li>
                   ))}

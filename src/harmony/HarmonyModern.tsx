@@ -121,7 +121,7 @@ const D = {
   queue: 'M4 6h12M4 11h12M4 16h7M15 14v6l5-3z', lyr: 'M5 5h14v10H9l-4 4zM8.500 9h7M8.500 12h4',
   bolt: 'M13 3 5 13h5l-1 8 8-10h-5z', plus: 'M12 5v14M5 12h14',
   metro: 'M8 21 10 4h4l2 17zM12 17 17 6M9.500 13h5',
-  score: 'M5 5h14v14H5zM5 9h14M5 13h14M5 17h14',
+  score: 'M5 5h14v14H5zM5 9h14M5 13h14M5 17h14', home: 'M4 11l8-7 8 7M6 10v10h4v-6h4v6h4V10',
 };
 
 /** Average colour of a picture (8×8 sample) so the background can bleed out of the cover. */
@@ -266,6 +266,7 @@ export default function HarmonyModern(p: ModernProps) {
         {wide ? <button onClick={p.onExit} aria-label="나가기" style={{ ...iconBtn({ padding: '8px 12px' }), fontSize: 15 }}>나가기</button>
           : <button onClick={() => setScreen('queue')} aria-label="목록으로" style={iconBtn()}><Ico d={D.down} size={30} stroke /></button>}
         <span style={{ display: 'flex' }}>
+          {!wide && <button onClick={p.onExit} aria-label="홈으로" title="홈으로" style={iconBtn()}><Ico d={D.home} size={26} stroke /></button>}
           <button onClick={() => setMenu('metro')} aria-label="메트로놈" aria-pressed={p.metro.on} style={{ ...iconBtn(), color: p.metro.on || p.metro.count > 0 ? accent : ink }}><Ico d={D.metro} size={26} stroke /></button>
           <button onClick={() => setMenu('settings')} aria-label="설정" style={iconBtn()}><Ico d={D.gear} size={26} stroke /></button>
         </span>
@@ -339,6 +340,7 @@ export default function HarmonyModern(p: ModernProps) {
           <div style={{ fontSize: 22, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.cur?.h.title ?? ''}</div>
           <div style={{ fontSize: 15, color: dim }}>{p.cur ? p.cur.book.name : ''}</div>
         </div>
+        <button onClick={() => setScreen('queue')} aria-label="곡 목록" title="곡 목록" style={iconBtn({ padding: '8px 6px' })}><Ico d={D.queue} size={26} stroke /></button>
         {p.cur && !p.isAudio && p.onOpenScore
           ? <button onClick={() => p.onOpenScore!(p.cur!.book, p.cur!.h)} aria-label="악보 보기" style={{ ...iconBtn({ padding: '8px 6px' }), fontSize: 14 }}>악보</button>
           : <span style={{ width: 46 }} />}
@@ -435,7 +437,10 @@ export default function HarmonyModern(p: ModernProps) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px' }}>
         <button onClick={() => (p.cur ? setScreen('now') : p.onExit())} aria-label={p.cur ? '재생 화면으로' : '나가기'} style={iconBtn()}><Ico d={D.close} size={30} stroke /></button>
         <div style={{ fontSize: 22, fontWeight: 800 }}>나의 하모니</div>
-        <button onClick={() => setMenu('settings')} aria-label="설정" style={iconBtn()}><Ico d={D.gear} size={26} stroke /></button>
+        <span style={{ display: 'flex' }}>
+          <button onClick={p.onExit} aria-label="홈으로" title="홈으로" style={iconBtn()}><Ico d={D.home} size={26} stroke /></button>
+          <button onClick={() => setMenu('settings')} aria-label="설정" style={iconBtn()}><Ico d={D.gear} size={26} stroke /></button>
+        </span>
       </div>
       {sectionTabs}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: tabPadding }}>{tabBody}</div>

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, collection, query, where, getDocs, setDoc, onSnapshot } from 'firebase/firestore';
-import { Clock, Menu, LogOut } from 'lucide-react';
+import { Clock, Menu, LogOut, Home } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Members from './components/Members';
@@ -256,11 +256,18 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-w-0 md:ml-64 relative min-h-screen">
         <div className="md:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-900 tracking-tight">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              aria-label="홈으로"
+              className="p-2 -ml-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <Home className="w-6 h-6" />
+            </button>
+            <button onClick={() => setActiveTab('dashboard')} className="text-lg font-bold text-gray-900 tracking-tight">
               동해교회
               <span className="text-blue-600 ml-1">찬양대</span>
-            </span>
+            </button>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(true)}

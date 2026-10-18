@@ -100,7 +100,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'member-status', label: '인원 현황', icon: Users },
     { id: 'members', label: '인원 관리', icon: Users },
-    { id: 'opening-hymns', label: '시작찬송 관리', icon: BookOpen },
+    { id: 'opening-hymns', label: '시작찬송', icon: BookOpen },
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
     { id: 'mp3-player', label: '찬송가 연습', icon: Headphones },
@@ -112,7 +112,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     .filter(item => menuConfig[item.id]?.visible !== false) // 기본값은 표시(true)
     .map(item => ({
       ...item,
-      label: menuConfig[item.id]?.label || item.label // 설정된 이름이 있으면 우선 사용
+      label: (menuConfig[item.id]?.label === '시작찬송 관리' ? '시작찬송' : menuConfig[item.id]?.label) || item.label // 설정된 이름이 있으면 우선 사용
     }));
 
   const navItems = [

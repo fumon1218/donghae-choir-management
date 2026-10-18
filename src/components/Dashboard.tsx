@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Headphones, Music, Calendar, MessageSquare, Edit3, Save, X, Plus, Trash2, Play, Clock, MapPin } from 'lucide-react';
+import { Edit3, Save, X, Plus, Trash2, Play, Clock, MapPin } from 'lucide-react';
 import { Member, Schedule as ScheduleType, Hymn } from '../data';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,12 +14,12 @@ const BASE = import.meta.env.BASE_URL;
 const SERIF = "'Noto Serif KR', serif";
 const NAVY = '#1F2D4D';
 const GOLD = '#C99A2E';
-const PART_INFO: { part: string; label: string; color: string }[] = [
-  { part: 'Soprano', label: '소프라노', color: '#1F2D4D' },
-  { part: 'Alto', label: '알토', color: '#3E6FB0' },
-  { part: 'Tenor', label: '테너', color: '#C99A2E' },
-  { part: 'Bass', label: '베이스', color: '#2F8F83' },
-  { part: 'Orchestra', label: '오케스트라', color: '#8A4F7D' },
+const PART_INFO: { part: string; label: string; color: string; img: string }[] = [
+  { part: 'Soprano', label: '소프라노', color: '#1F2D4D', img: 'part-soprano.png' },
+  { part: 'Alto', label: '알토', color: '#3E6FB0', img: 'part-alto.png' },
+  { part: 'Tenor', label: '테너', color: '#C99A2E', img: 'part-tenor.png' },
+  { part: 'Bass', label: '베이스', color: '#2F8F83', img: 'part-bass.png' },
+  { part: 'Orchestra', label: '오케스트라', color: '#8A4F7D', img: 'part-orchestra.png' },
 ];
 const DAY_CHARS = '일월화수목금토';
 
@@ -179,10 +179,10 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
 
   const dateLabel = `${now.getMonth() + 1}월 ${now.getDate()}일 ${DAY_CHARS[now.getDay()]}요일`;
   const quick = [
-    { id: 'mp3-player', label: '찬송가 연습', icon: Headphones, bg: '#E8EDF7', fg: NAVY },
-    { id: 'hymns', label: '월별 찬송가', icon: Music, bg: '#F5EBCB', fg: '#6B4E0F' },
-    { id: 'schedule', label: '연습 스케줄', icon: Calendar, bg: '#DDEFEB', fg: '#1E6B61' },
-    { id: 'legacy-board', label: '게시판', icon: MessageSquare, bg: '#F1E3EE', fg: '#7A3F6D' },
+    { id: 'mp3-player', label: '찬송가 연습', img: 'icon-headphones.png' },
+    { id: 'hymns', label: '월별 찬송가', img: 'icon-hymns.png' },
+    { id: 'schedule', label: '연습 스케줄', img: 'icon-schedule.png' },
+    { id: 'legacy-board', label: '게시판', img: 'icon-board.png' },
   ];
 
   return (
@@ -200,9 +200,11 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
         >
           <img
             src={`${BASE}images/dash-hero.jpg`}
+            srcSet={`${BASE}images/dash-hero-m.jpg 576w, ${BASE}images/dash-hero.jpg 1680w`}
+            sizes="(max-width: 767px) 576px, 1680px"
             alt=""
             aria-hidden="true"
-            className="absolute inset-y-0 right-0 h-full w-[75%] md:w-[65%] object-cover object-right"
+            className="absolute inset-y-0 right-0 h-full w-[85%] md:w-[65%] object-cover object-right"
             style={{ WebkitMaskImage: 'linear-gradient(to right, transparent, #000 55%)', maskImage: 'linear-gradient(to right, transparent, #000 55%)' }}
           />
           <div className="relative p-6 md:p-8 flex flex-col gap-3 flex-1">
@@ -239,7 +241,7 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 flex flex-col justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 flex flex-col justify-between gap-3" style={{ backgroundImage: `url(${BASE}images/dash-paper.jpg)`, backgroundSize: 'cover' }}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs font-bold text-gray-500">다음 연습</div>
@@ -290,8 +292,8 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
             onClick={() => onNavigate?.(q.id)}
             className="flex items-center gap-3 min-h-[56px] px-4 rounded-2xl bg-white border border-[#E6DFCF] hover:shadow-md transition-all text-left font-bold text-sm text-gray-900"
           >
-            <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: q.bg, color: q.fg }}>
-              <q.icon className="w-[18px] h-[18px]" />
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#FAF7F0]">
+              <img src={`${BASE}images/${q.img}`} alt="" aria-hidden="true" className="w-8 h-8 object-contain" />
             </span>
             {q.label}
           </button>
@@ -300,7 +302,7 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
         {/* 월 찬송가 */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6" style={{ backgroundImage: `url(${BASE}images/dash-paper.jpg)`, backgroundSize: 'cover' }}>
           <div className="flex items-baseline justify-between mb-2">
             <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>{currentMonth}월 찬송가</h2>
             <span className="text-xs text-gray-500">{thisMonthHymns.length}곡</span>
@@ -351,7 +353,7 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
 
         <div className="space-y-5 md:space-y-6">
           {/* 공지 */}
-          <div className="relative bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 overflow-hidden">
+          <div className="relative bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 overflow-hidden" style={{ backgroundImage: `url(${BASE}images/dash-paper.jpg)`, backgroundSize: 'cover' }}>
             <img src={`${BASE}images/dash-olive.png`} alt="" aria-hidden="true" className="absolute -top-2 -right-2 w-20 opacity-90 pointer-events-none" />
             <div className="flex items-center justify-between mb-3 relative">
               <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>공지</h2>
@@ -394,7 +396,7 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
           </div>
 
           {/* 파트별 인원 */}
-          <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6">
+          <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6" style={{ backgroundImage: `url(${BASE}images/dash-paper.jpg)`, backgroundSize: 'cover' }}>
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>파트별 인원</h2>
               <button onClick={() => onNavigate?.('member-status')} className="text-xs text-gray-500 hover:text-gray-800 min-h-[32px]">
@@ -409,7 +411,7 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-[13px]">
               {memberCounts.map(m => (
                 <div key={m.part} className="flex items-center justify-between">
-                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5" style={{ background: m.color }} />{m.label}</span>
+                  <span className="flex items-center"><img src={`${BASE}images/${m.img}`} alt="" aria-hidden="true" className="w-6 h-6 object-contain mr-1.5" /><span className="inline-block w-2 h-2 rounded-[2px] mr-1.5" style={{ background: m.color }} />{m.label}</span>
                   <b>{m.count}</b>
                 </div>
               ))}

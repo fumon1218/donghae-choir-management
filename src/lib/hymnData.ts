@@ -63,15 +63,44 @@ const readJson = async <T,>(path: [string, string]): Promise<T | null> => {
   return typeof json === 'string' ? (JSON.parse(json) as T) : null;
 };
 
+// ---- 월별 찬송가: the hymns linked in "월별 찬송가" appear as one more book, grouped by month ----
+export const MONTHLY_ID = 'monthly';
+const monthlyMap = new Map<number, { book: string; n: number }>();
+let monthlyList: HymnEntry[] = [];
+
+async function loadMonthly(): Promise<void> {
+  monthlyMap.clear(); monthlyList = [];
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'hymns_data'));
+    const list = (snap.get('list') ?? []) as { month: number; date: string; title: string; book?: string; num?: number }[];
+    const linked = list.filter(h => h.book && h.num).sort((a, b) => a.month - b.month || (a.date ?? '').localeCompare(b.date ?? ''));
+    const perMonth = new Map<number, number>();
+    for (const h of linked) {
+      const k = (perMonth.get(h.month) ?? 0) + 1;
+      perMonth.set(h.month, k);
+      const n = h.month * 100 + k;
+      monthlyMap.set(n, { book: h.book!, n: h.num! });
+      const bookName = h.book === 'grace' ? '은혜찬송' : '찬송가';
+      monthlyList.push({ n, title: `${h.title || ''} (${bookName} ${h.num}장)`.trim(), section: `${h.month}월`, parts: [], lyric: false });
+    }
+  } catch { /* the month list is optional */ }
+}
+
+/** The real book and number behind a 월별 찬송가 entry. */
+export const resolveMonthly = (n: number) => monthlyMap.get(n);
+
 export function getBooks(): Promise<HymnBook[]> {
   if (!booksP) {
     booksP = (async () => {
-      const cached = readLS<HymnBook[]>('books');
-      if (cached) return cached;
-      const v = await readJson<HymnBook[]>(['hymn_meta', 'collections']);
-      if (!v) throw new Error('찬송가 자료가 아직 올라와 있지 않아요. 지휘자님께 자료 올리기를 요청해 주세요.');
-      writeLS('books', v);
-      return v;
+      let base = readLS<HymnBook[]>('books');
+      if (!base) {
+        const v = await readJson<HymnBook[]>(['hymn_meta', 'collections']);
+        if (!v) throw new Error('찬송가 자료가 아직 올라와 있지 않아요. 지휘자님께 자료 올리기를 요청해 주세요.');
+        writeLS('books', v);
+        base = v;
+      }
+      await loadMonthly();
+      return monthlyList.length ? [{ id: MONTHLY_ID, name: '월별 찬송가' }, ...base] : base;
     })();
     booksP.catch(() => { booksP = null; });
   }
@@ -79,6 +108,7 @@ export function getBooks(): Promise<HymnBook[]> {
 }
 
 export function getIndex(bookId: string): Promise<HymnEntry[]> {
+  if (bookId === MONTHLY_ID) return Promise.resolve(monthlyList);
   let p = indexP.get(bookId);
   if (!p) {
     p = (async () => {

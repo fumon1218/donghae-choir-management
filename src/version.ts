@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.8.1';
-export const UPDATE_SUMMARY = '월별 찬송가: 번호·제목으로 찬송가를 찾아 연결 (v1.8.1)';
+export const APP_VERSION = 'v1.8.2';
+export const UPDATE_SUMMARY = '악보 보기에 재생·멈춤·속도·파트 선택 추가 (v1.8.2)';

@@ -16,7 +16,7 @@ export default function HymnPractice({ userRole, target, onExit }: { userRole: s
   const canUpload = userRole === '대장' || userRole === '지휘자';
   const [state, setState] = useState<'loading' | 'ready' | 'empty'>('loading');
   const [err, setErr] = useState('');
-  const [start, setStart] = useState<{ book: HymnBook; h: HymnEntry } | null>(null);
+  const [start] = useState<{ book: HymnBook; h: HymnEntry } | null>(null);
   const [view, setView] = useState<{ book: HymnBook; h: HymnEntry; fromLink: boolean } | null>(null);
   const [viewSong, setViewSong] = useState<LoadedSong | null>(null);
   const [viewErr, setViewErr] = useState('');
@@ -36,7 +36,8 @@ export default function HymnPractice({ userRole, target, onExit }: { userRole: s
         if (book) {
           try {
             const h = (await getIndex(book.id)).find(x => x.n === target.n);
-            if (h && live) { setStart({ book, h }); setView({ book, h, fromLink: true }); }
+            // the score window plays the song itself (play / pause / parts), so the player below does not start on its own
+            if (h && live) setView({ book, h, fromLink: true });
           } catch { /* the player still opens */ }
         }
       }
@@ -82,7 +83,7 @@ export default function HymnPractice({ userRole, target, onExit }: { userRole: s
         <button onClick={() => setUpload(true)} title="찬송가 자료 올리기·갱신" style={{ position: 'fixed', right: 10, bottom: 10, zIndex: 71, padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(255,255,255,.35)', background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 11 }}>자료 관리</button>
       )}
       {view && (viewSong
-        ? <ScoreViewer score={viewSong.score} title={`${view.h.n}. ${view.h.title}`} subtitle={view.book.name} onClose={() => setView(null)} closeLabel="플레이어" />
+        ? <ScoreViewer score={viewSong.score} partNames={viewSong.partNames} engine={engine} title={`${view.h.n}. ${view.h.title}`} subtitle={view.book.name} onClose={() => setView(null)} closeLabel="플레이어" />
         : <div style={{ ...box, zIndex: 75, background: '#f7f4ec', color: '#333' }}>
             {viewErr ? <><div>{viewErr}</div><button onClick={() => setView(null)} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #999' }}>닫기</button></> : '악보를 불러오는 중…'}
           </div>)}

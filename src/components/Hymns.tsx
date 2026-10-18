@@ -127,10 +127,17 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
   };
 
   const handleAddHymn = () => {
-    // 해당 월의 1일로 기본값 설정 (YYYY-MM-DD)
+    // 아직 목록에 없는 다음 일요일을 기본값으로 채웁니다 (날짜는 직접 바꿀 수 있습니다).
     const year = new Date().getFullYear();
-    const monthStr = currentMonth.toString().padStart(2, '0');
-    const defaultDate = `${year}-${monthStr}-01`;
+    const used = new Set(editHymns.map(h => h.date));
+    const d = new Date(year, currentMonth - 1, 1);
+    while (d.getDay() !== 0) d.setDate(d.getDate() + 1);
+    let defaultDate = `${year}-${String(currentMonth).padStart(2, '0')}-01`;
+    while (d.getMonth() === currentMonth - 1) {
+      const str = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!used.has(str)) { defaultDate = str; break; }
+      d.setDate(d.getDate() + 7);
+    }
     setEditHymns([...editHymns, { month: currentMonth, date: defaultDate, title: '', composer: '' }]);
   };
 

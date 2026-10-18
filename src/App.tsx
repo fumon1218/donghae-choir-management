@@ -221,7 +221,7 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard userRole={userRole} onNavigate={setActiveTab} />;
+      case 'dashboard': return <Dashboard userRole={userRole} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
       case 'member-status': return <MemberStatus userData={userData} userRole={userRole} />;
       case 'members': return <Members userRole={userRole} userData={userData} />;
       case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
@@ -234,7 +234,7 @@ export default function App() {
           const boardId = activeTab.replace('board_', '');
           return <Board boardId={boardId} userRole={userRole} userData={userData} />;
         }
-        return <Dashboard userRole={userRole} onNavigate={setActiveTab} />;
+        return <Dashboard userRole={userRole} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
     }
   };
 

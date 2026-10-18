@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Music, Calendar, Loader2, Megaphone, Edit3, Save, X, Plus, Trash2, Clock, MapPin } from 'lucide-react';
+import { Headphones, Music, Calendar, MessageSquare, Edit3, Save, X, Plus, Trash2, Play, Clock, MapPin } from 'lucide-react';
 import { Member, Schedule as ScheduleType, Hymn } from '../data';
 import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -7,9 +7,38 @@ import { db } from '../lib/firebase';
 interface DashboardProps {
   userRole: string | null;
   onNavigate?: (tab: string) => void;
+  onOpenPractice?: (book: string, n: number) => void;
 }
 
-export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
+const BASE = import.meta.env.BASE_URL;
+const SERIF = "'Noto Serif KR', serif";
+const NAVY = '#1F2D4D';
+const GOLD = '#C99A2E';
+const PART_INFO: { part: string; label: string; color: string }[] = [
+  { part: 'Soprano', label: '소프라노', color: '#1F2D4D' },
+  { part: 'Alto', label: '알토', color: '#3E6FB0' },
+  { part: 'Tenor', label: '테너', color: '#C99A2E' },
+  { part: 'Bass', label: '베이스', color: '#2F8F83' },
+  { part: 'Orchestra', label: '오케스트라', color: '#8A4F7D' },
+];
+const DAY_CHARS = '일월화수목금토';
+
+function weekdayOf(day: string): number | null {
+  const m = day.match(/([일월화수목금토])요일/);
+  if (m) return DAY_CHARS.indexOf(m[1]);
+  if (day.includes('주일')) return 0;
+  const f = day.trim().charAt(0);
+  return DAY_CHARS.includes(f) ? DAY_CHARS.indexOf(f) : null;
+}
+
+function parseHymnDate(date: string, fallbackYear: number): Date | null {
+  const parts = String(date || '').split('-').map(Number);
+  if (parts.length === 3 && parts.every(n => !isNaN(n))) return new Date(parts[0], parts[1] - 1, parts[2]);
+  if (parts.length === 2 && parts.every(n => !isNaN(n))) return new Date(fallbackYear, parts[0] - 1, parts[1]);
+  return null;
+}
+
+export default function Dashboard({ userRole, onNavigate, onOpenPractice }: DashboardProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,11 +121,11 @@ export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
     return () => unsubscribe();
   }, []);
 
+
   const totalMembers = allMembers.length;
-  const parts = ['Soprano', 'Alto', 'Tenor', 'Bass', 'Orchestra'];
-  const memberCounts = parts.map(part => ({
-    part,
-    count: allMembers.filter(m => m.part === part).length
+  const memberCounts = PART_INFO.map(info => ({
+    ...info,
+    count: allMembers.filter(m => m.part === info.part).length
   }));
 
   const handleSaveAd = async () => {
@@ -112,188 +141,280 @@ export default function Dashboard({ userRole, onNavigate }: DashboardProps) {
     }
   };
 
-  const currentMonth = new Date().getMonth() + 1;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentMonth = now.getMonth() + 1;
   // 문자열/숫자 타입 불일치 및 배열 여부를 체크하여 에러를 방지합니다.
   const thisMonthHymns = Array.isArray(allHymns) ? allHymns.filter(h => Number(h.month) === currentMonth) : [];
+  const hymnRows = thisMonthHymns.map(h => {
+    const d = parseHymnDate(h.date, now.getFullYear());
+    return { hymn: h, d, past: d ? d < today : false };
+  });
+  const upcomingIdx = hymnRows.findIndex(r => r.d && !r.past);
+  const featuredIdx = upcomingIdx >= 0 ? upcomingIdx : hymnRows.length - 1;
+  const featured = featuredIdx >= 0 ? hymnRows[featuredIdx] : null;
+
+  const openHymn = (h: Hymn) => {
+    if (h.book && h.num && onOpenPractice) onOpenPractice(h.book, h.num);
+    else onNavigate?.('mp3-player');
+  };
+
+  // 다음 연습: 오늘 이후 가장 가까운 요일의 일정
+  const nextPractice = (() => {
+    if (!Array.isArray(schedules) || schedules.length === 0) return null;
+    let best: { s: ScheduleType; diff: number | null } | null = null;
+    for (const s of schedules) {
+      const w = weekdayOf(s.day || '');
+      const diff = w === null ? null : (w - today.getDay() + 7) % 7;
+      if (!best) best = { s, diff };
+      else if (diff !== null && (best.diff === null || diff < best.diff)) best = { s, diff };
+    }
+    return best;
+  })();
+
+  const notices = adContent
+    .split('\n')
+    .map(l => l.replace(/^\s*\d+[.)]\s*/, '').trim())
+    .filter(Boolean);
+
+  const dateLabel = `${now.getMonth() + 1}월 ${now.getDate()}일 ${DAY_CHARS[now.getDay()]}요일`;
+  const quick = [
+    { id: 'mp3-player', label: '찬송가 연습', icon: Headphones, bg: '#E8EDF7', fg: NAVY },
+    { id: 'hymns', label: '월별 찬송가', icon: Music, bg: '#F5EBCB', fg: '#6B4E0F' },
+    { id: 'schedule', label: '연습 스케줄', icon: Calendar, bg: '#DDEFEB', fg: '#1E6B61' },
+    { id: 'legacy-board', label: '게시판', icon: MessageSquare, bg: '#F1E3EE', fg: '#7A3F6D' },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
-        <span className="text-gray-500 font-medium whitespace-nowrap">동해교회 찬양대</span>
+    <div className="space-y-5 md:space-y-6">
+      <div>
+        <div className="text-sm text-gray-500">{dateLabel}</div>
+        <h1 className="text-xl md:text-2xl font-bold leading-snug" style={{ fontFamily: SERIF, color: NAVY }}>동해교회 찬양대</h1>
       </div>
 
-      {/* Advertisement Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg overflow-hidden relative">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Megaphone className="w-32 h-32 rotate-12" />
-        </div>
-        <div className="p-6 md:p-8 relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-blue-100">
-              <Megaphone className="w-5 h-5" />
-              <span className="text-sm font-bold uppercase tracking-wider">광고 및 공지</span>
-            </div>
-            {isAdmin && !isEditingAd && (
-              <button
-                onClick={() => {
-                  setTempAdContent(adContent);
-                  setIsEditingAd(true);
-                }}
-                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors flex items-center gap-2 text-xs font-medium"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                광고 수정
-              </button>
+      {/* 이번 주일 찬양 + 다음 연습 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+        <div
+          className="lg:col-span-2 relative rounded-2xl overflow-hidden text-white min-h-[250px] md:min-h-[290px] flex flex-col"
+          style={{ background: `linear-gradient(160deg,#16203A,${NAVY} 60%,#3A4A6E)` }}
+        >
+          <img
+            src={`${BASE}images/dash-hero.jpg`}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 h-full w-[75%] md:w-[65%] object-cover object-right"
+            style={{ WebkitMaskImage: 'linear-gradient(to right, transparent, #000 55%)', maskImage: 'linear-gradient(to right, transparent, #000 55%)' }}
+          />
+          <div className="relative p-6 md:p-8 flex flex-col gap-3 flex-1">
+            <span className="self-start text-xs font-bold px-3 py-1 rounded-full" style={{ background: GOLD, color: '#1B2233' }}>이번 주일 찬양</span>
+            {featured ? (
+              <>
+                <div className="text-3xl md:text-4xl font-bold leading-tight max-w-[70%]" style={{ fontFamily: SERIF }}>
+                  {featured.hymn.title || '제목 없음'}
+                </div>
+                <div className="text-sm text-[#E8E2D2]">
+                  {featured.d ? `${featured.d.getMonth() + 1}월 ${featured.d.getDate()}일` : ''}
+                  {featured.hymn.num ? ` · ${featured.hymn.book === 'grace' ? '은혜찬송가' : '찬송가'} ${featured.hymn.num}장` : ''}
+                </div>
+                <button
+                  onClick={() => openHymn(featured.hymn)}
+                  className="mt-auto self-start md:self-start w-full md:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-white font-bold text-[15px] hover:bg-gray-100 transition-colors"
+                  style={{ color: NAVY }}
+                >
+                  <Play className="w-4 h-4" fill={NAVY} /> 악보 보며 연습하기
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl md:text-3xl font-bold leading-tight max-w-[70%]" style={{ fontFamily: SERIF }}>이번 달 찬송가가 아직 없습니다</div>
+                <button
+                  onClick={() => onNavigate?.('hymns')}
+                  className="mt-auto self-start inline-flex items-center justify-center min-h-[48px] px-6 rounded-xl bg-white font-bold text-[15px]"
+                  style={{ color: NAVY }}
+                >
+                  월별 찬송가 보기
+                </button>
+              </>
             )}
           </div>
+        </div>
 
-          {isEditingAd ? (
-            <div className="space-y-4">
-              <textarea
-                value={tempAdContent}
-                onChange={(e) => setTempAdContent(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 h-32 transition-all"
-                placeholder="광고 내용을 입력해 주세요..."
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setIsEditingAd(false)}
-                  className="px-4 py-2 text-white/70 hover:text-white text-sm font-medium transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleSaveAd}
-                  className="px-6 py-2 bg-white text-blue-700 rounded-xl text-sm font-bold shadow-sm hover:bg-blue-50 transition-all flex items-center gap-2"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  저장하기
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="min-h-[60px]">
-              {adContent ? (
-                <p className="text-white text-lg md:text-xl font-medium leading-relaxed whitespace-pre-wrap">
-                  {adContent}
-                </p>
+        <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 flex flex-col justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-gray-500">다음 연습</div>
+              {nextPractice ? (
+                <>
+                  <div className="text-xl md:text-2xl font-bold mt-1 leading-snug" style={{ fontFamily: SERIF, color: NAVY }}>
+                    {nextPractice.s.day}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-2"><Clock className="w-4 h-4 shrink-0" />{nextPractice.s.time}</div>
+                  {nextPractice.s.location && <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1"><MapPin className="w-4 h-4 shrink-0" />{nextPractice.s.location}</div>}
+                </>
               ) : (
-                <p className="text-white/50 text-base italic">등록된 광고 내용이 없습니다.</p>
+                <div className="text-sm text-gray-500 mt-2">등록된 연습 일정이 없습니다.</div>
               )}
             </div>
-          )}
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {nextPractice && nextPractice.diff !== null && (
+                <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: '#F0E6C8', color: '#6B4E0F' }}>
+                  {nextPractice.diff === 0 ? '오늘' : `D-${nextPractice.diff}`}
+                </span>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setEditSchedules(Array.isArray(schedules) ? [...schedules] : []);
+                    setIsManagingSchedules(true);
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  style={{ color: NAVY }}
+                  title="연습 일정 수정"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+          <button onClick={() => onNavigate?.('schedule')} className="text-sm font-bold text-left min-h-[40px]" style={{ color: NAVY }}>
+            전체 일정 보기 →
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <button
-          onClick={() => onNavigate?.('member-status')}
-          className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4 hover:shadow-md hover:border-blue-100 transition-all text-left"
-        >
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">총 인원</p>
-            {loading ? (
-              <div className="h-8 flex items-center">
-                <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
-              </div>
-            ) : (
-              <p className="text-2xl font-bold text-gray-900 truncate">{totalMembers}명</p>
-            )}
-          </div>
-        </button>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
-            <Music className="w-6 h-6" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">이번 달 찬송가</p>
-            <p className="text-2xl font-bold text-gray-900 truncate">{thisMonthHymns.length}곡</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg shrink-0">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-500">주간 연습</p>
-              <p className="text-2xl font-bold text-gray-900 truncate">{Array.isArray(schedules) ? schedules.length : 0}회</p>
-            </div>
-          </div>
-          {isAdmin && (
-            <button
-              onClick={() => {
-                setEditSchedules(Array.isArray(schedules) ? [...schedules] : []);
-                setIsManagingSchedules(true);
-              }}
-              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-              title="연습 일정 수정"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+      {/* 바로가기 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {quick.map(q => (
+          <button
+            key={q.id}
+            onClick={() => onNavigate?.(q.id)}
+            className="flex items-center gap-3 min-h-[56px] px-4 rounded-2xl bg-white border border-[#E6DFCF] hover:shadow-md transition-all text-left font-bold text-sm text-gray-900"
+          >
+            <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: q.bg, color: q.fg }}>
+              <q.icon className="w-[18px] h-[18px]" />
+            </span>
+            {q.label}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">파트별 인원 현황</h2>
-          <div className="space-y-4">
-            {memberCounts.map(({ part, count }) => (
-              <div key={part} className="flex items-center justify-between">
-                <span className="text-gray-600 font-medium">{part}</span>
-                <div className="flex items-center space-x-3 w-2/3">
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{ width: `${(count / (totalMembers || 1)) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 w-8 text-right">{count}명</span>
-                </div>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+        {/* 월 찬송가 */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6">
+          <div className="flex items-baseline justify-between mb-2">
+            <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>{currentMonth}월 찬송가</h2>
+            <span className="text-xs text-gray-500">{thisMonthHymns.length}곡</span>
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{currentMonth}월 찬송가</h2>
-          {thisMonthHymns.length > 0 ? (
-            <div className="space-y-3 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
-              {thisMonthHymns.map((hymn, idx) => (
-                <div key={idx} className="flex items-center p-4 bg-gray-50/80 rounded-2xl border border-gray-100/50 hover:bg-gray-100 transition-all duration-200 group">
-                  <div className="flex-shrink-0 w-20 h-12 bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center shadow-sm group-hover:border-blue-200 transition-colors">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">
-                      {String(hymn.date || '').split('-')[0] || '2026'}
-                    </span>
-                    <span className="text-sm font-black text-blue-600 leading-tight">
-                      {String(hymn.date || '').split('-').slice(1).join('.') || '00.00'}
-                    </span>
-                  </div>
-                  <div className="ml-6 flex-1">
-                    <p className="text-sm font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors leading-tight">{hymn.title || '제목 없음'}</p>
-                    <div className="flex items-center text-[11px] text-gray-500 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-1.5"></span>
-                      작곡: {hymn.composer || '미상'}
+          {hymnRows.length > 0 ? (
+            <div>
+              {hymnRows.map((r, idx) => {
+                const isFeatured = idx === featuredIdx;
+                const linked = !!(r.hymn.book && r.hymn.num);
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 md:gap-4 py-3 ${isFeatured ? 'px-3 -mx-3 my-1 rounded-xl border-[1.5px]' : 'border-b border-[#EFE9DA] last:border-b-0'} ${r.past ? 'opacity-60' : ''}`}
+                    style={isFeatured ? { background: '#FBF3DC', borderColor: GOLD } : undefined}
+                  >
+                    <div className="w-14 text-center font-bold text-[15px]" style={{ color: isFeatured ? NAVY : undefined }}>
+                      {r.d ? `${r.d.getDate()}일` : String(r.hymn.date || '')}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-bold ${isFeatured ? 'text-[15px]' : 'text-sm'} truncate`} style={{ color: isFeatured ? NAVY : undefined }}>{r.hymn.title || '제목 없음'}</div>
+                      <div className="text-xs text-gray-500 truncate" style={isFeatured ? { color: '#6B4E0F' } : undefined}>
+                        {[r.hymn.num ? `${r.hymn.num}장` : '', isFeatured && !r.past ? '이번 주일' : '', r.hymn.composer && r.hymn.composer !== '미상' ? `작곡: ${r.hymn.composer}` : '', !linked ? '연습 연결 없음' : ''].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                    {linked ? (
+                      <button
+                        onClick={() => openHymn(r.hymn)}
+                        aria-label={`${r.hymn.title} 연습`}
+                        className={`min-w-[48px] min-h-[44px] inline-flex items-center justify-center rounded-xl text-sm font-bold ${isFeatured ? 'text-white' : 'bg-[#EEF1F7] hover:bg-[#E2E7F2]'}`}
+                        style={isFeatured ? { background: NAVY } : { color: NAVY }}
+                      >
+                        <Play className="w-4 h-4" fill="currentColor" />
+                      </button>
+                    ) : (
+                      <span className="min-w-[48px]" />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                <Music className="w-6 h-6 text-gray-400" />
-              </div>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <img src={`${BASE}images/dash-empty.png`} alt="" className="w-56 md:w-72 rounded-2xl mb-3" />
               <p className="text-gray-500 text-sm">이번 달 찬송가 목록이 없습니다.</p>
             </div>
           )}
+        </div>
+
+        <div className="space-y-5 md:space-y-6">
+          {/* 공지 */}
+          <div className="relative bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6 overflow-hidden">
+            <img src={`${BASE}images/dash-olive.png`} alt="" aria-hidden="true" className="absolute -top-2 -right-2 w-20 opacity-90 pointer-events-none" />
+            <div className="flex items-center justify-between mb-3 relative">
+              <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>공지</h2>
+              {isAdmin && !isEditingAd && (
+                <button
+                  onClick={() => { setTempAdContent(adContent); setIsEditingAd(true); }}
+                  className="mr-14 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  <Edit3 className="w-3.5 h-3.5" /> 수정
+                </button>
+              )}
+            </div>
+            {isEditingAd ? (
+              <div className="space-y-3 relative">
+                <textarea
+                  value={tempAdContent}
+                  onChange={(e) => setTempAdContent(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm h-36 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="공지를 한 줄에 하나씩 입력해 주세요..."
+                />
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setIsEditingAd(false)} className="px-4 py-2 text-gray-500 hover:text-gray-800 text-sm font-medium">취소</button>
+                  <button onClick={handleSaveAd} className="px-5 py-2 text-white rounded-xl text-sm font-bold flex items-center gap-2" style={{ background: NAVY }}>
+                    <Save className="w-3.5 h-3.5" /> 저장
+                  </button>
+                </div>
+              </div>
+            ) : notices.length > 0 ? (
+              <ul className="space-y-2 text-sm leading-relaxed relative">
+                {notices.map((n, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: GOLD }} />
+                    <span>{n}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-400 italic relative">등록된 공지가 없습니다.</p>
+            )}
+          </div>
+
+          {/* 파트별 인원 */}
+          <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>파트별 인원</h2>
+              <button onClick={() => onNavigate?.('member-status')} className="text-xs text-gray-500 hover:text-gray-800 min-h-[32px]">
+                {loading ? '불러오는 중…' : `총 ${totalMembers}명 →`}
+              </button>
+            </div>
+            <div className="flex h-3 rounded-md overflow-hidden gap-0.5 bg-gray-100">
+              {memberCounts.map(m => m.count > 0 && (
+                <div key={m.part} style={{ flex: m.count, background: m.color }} title={`${m.label} ${m.count}명`} />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-[13px]">
+              {memberCounts.map(m => (
+                <div key={m.part} className="flex items-center justify-between">
+                  <span className="flex items-center"><span className="inline-block w-2.5 h-2.5 rounded-[3px] mr-1.5" style={{ background: m.color }} />{m.label}</span>
+                  <b>{m.count}</b>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

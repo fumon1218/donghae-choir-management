@@ -23,6 +23,7 @@ import MemberStatus from './components/MemberStatus';
 import HymnPractice, { type PracticeTarget } from './components/HymnPractice';
 import { APP_VERSION } from './version';
 import { Divider } from './components/Decor';
+import EmbedPage from './components/EmbedPage';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -229,6 +230,8 @@ export default function App() {
       case 'hymns': return <Hymns userRole={userRole} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
       case 'schedule': return <Schedule userRole={userRole} />;
       case 'mp3-player': return <HymnPractice userRole={userRole} target={practiceTarget} onExit={() => { setPracticeTarget(null); setActiveTab('dashboard'); }} />;
+      case 'church-calendar': return <EmbedPage title="교회 캘린더" url="https://fumon1218.github.io/church-calendar/" />;
+      case 'bible-memory': return <EmbedPage title="암송수첩" url="https://fumon1218.github.io/bible-memory-app/" />;
       case 'legacy-board': return <LegacyBoard userData={userData} />;
       default:
         if (activeTab.startsWith('board_')) {
@@ -281,7 +284,7 @@ export default function App() {
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto pb-16 md:pb-0">
             {renderContent()}
-            {activeTab !== 'dashboard' && <Divider className="mt-10 max-w-md mx-auto" />}
+            {activeTab !== 'dashboard' && activeTab !== 'church-calendar' && activeTab !== 'bible-memory' && <Divider className="mt-10 max-w-md mx-auto" />}
           </div>
         </main>
 

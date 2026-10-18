@@ -1,4 +1,4 @@
-import { Headphones, LayoutDashboard, Users, Music, Calendar, LogOut, MessageSquare, BookOpen, Settings, Edit2, X } from 'lucide-react';
+import { Headphones, LayoutDashboard, Users, Music, Calendar, LogOut, MessageSquare, BookOpen, BookMarked, CalendarDays, Settings, Edit2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
@@ -104,6 +104,8 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, userRole, u
     { id: 'hymns', label: '월별 찬송가', icon: Music },
     { id: 'schedule', label: '연습 스케줄', icon: Calendar },
     { id: 'mp3-player', label: '찬송가 연습', icon: Headphones },
+    { id: 'church-calendar', label: '교회 캘린더', icon: CalendarDays },
+    { id: 'bible-memory', label: '암송수첩', icon: BookMarked },
     { id: 'legacy-board', label: '자유게시판 (구버전)', icon: MessageSquare },
   ];
 

@@ -3,6 +3,7 @@ import { hymns as initialHymns, Hymn } from '../data';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Smartphone, Monitor } from 'lucide-react';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import HymnPicker from './HymnPicker';
 
 interface HymnsProps {
   userRole: string | null;
@@ -35,6 +36,7 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
   const [editHymns, setEditHymns] = useState<Hymn[]>([]);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
   const [isMobileView, setIsMobileView] = useState(() => window.innerWidth <= 768);
 
   // Load hymns from Firestore (Settings-based for atomicity across all items)
@@ -223,6 +225,17 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
   return (
     <div className="space-y-6 relative">
       <ImageModal />
+      {pickerFor !== null && (
+        <HymnPicker
+          initialBook={editHymns[pickerFor]?.book}
+          onClose={() => setPickerFor(null)}
+          onPick={(book, entry) => {
+            const idx = pickerFor;
+            setEditHymns(list => list.map((h, i) => (i === idx ? { ...h, book, num: entry.n, title: entry.title } : h)));
+            setPickerFor(null);
+          }}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">월별 찬송가</h1>
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">
@@ -403,6 +416,13 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
                             className="w-20 px-2 py-2 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50"
                             placeholder="번호"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setPickerFor(idx)}
+                            className="px-2 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                          >
+                            찾기
+                          </button>
                         </div>
                       </div>
                       <div className="w-16 sm:w-20 lg:w-32 flex-shrink-0">

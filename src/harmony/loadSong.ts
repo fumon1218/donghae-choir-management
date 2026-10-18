@@ -6,7 +6,7 @@ import { parseNWCTXT as parseNWCTXTText } from './nwctxt';
 import { nwcBinaryToText } from './nwcbin';
 import { closeSmallGaps } from './hymnMidi';
 import { autoAlign } from './lyrics';
-import { getSong } from '../lib/hymnData';
+import { getBooks, getIndex, getSong, MONTHLY_ID, resolveMonthly } from '../lib/hymnData';
 import type { HymnBook, HymnEntry } from '../lib/hymnData';
 
 
@@ -56,6 +56,13 @@ const BASS_PITCHES = [
 
 
 export async function loadSong(book: HymnBook, h: HymnEntry): Promise<LoadedSong> {
+  if (book.id === MONTHLY_ID) {
+    const t = resolveMonthly(h.n);
+    const rb = t && (await getBooks()).find(b => b.id === t.book);
+    const rh = t && rb && (await getIndex(rb.id)).find(x => x.n === t.n);
+    if (!rb || !rh) throw new Error('연결된 찬송가를 찾지 못했어요. 월별 찬송가의 연결 번호를 확인해 주세요.');
+    return loadSong(rb, rh);
+  }
   const files = await getSong(book.id, h.n);
   if (book.format === 'nwc') {
     if (!files.nwc) throw new Error('악보 파일이 없어요.');

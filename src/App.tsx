@@ -22,6 +22,7 @@ import OpeningHymns from './components/OpeningHymns';
 import MemberStatus from './components/MemberStatus';
 import HymnPractice, { type PracticeTarget } from './components/HymnPractice';
 import { APP_VERSION } from './version';
+import { Divider } from './components/Decor';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -221,7 +222,7 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard userRole={userRole} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
+      case 'dashboard': return <Dashboard userRole={userRole} userData={userData} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
       case 'member-status': return <MemberStatus userData={userData} userRole={userRole} />;
       case 'members': return <Members userRole={userRole} userData={userData} />;
       case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
@@ -234,7 +235,7 @@ export default function App() {
           const boardId = activeTab.replace('board_', '');
           return <Board boardId={boardId} userRole={userRole} userData={userData} />;
         }
-        return <Dashboard userRole={userRole} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
+        return <Dashboard userRole={userRole} userData={userData} onNavigate={setActiveTab} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
     }
   };
 
@@ -280,6 +281,7 @@ export default function App() {
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto pb-16 md:pb-0">
             {renderContent()}
+            {activeTab !== 'dashboard' && <Divider className="mt-10 max-w-md mx-auto" />}
           </div>
         </main>
 

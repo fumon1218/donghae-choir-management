@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Edit3, Save, X, Plus, Trash2, Play, Clock, MapPin } from 'lucide-react';
+import { Edit3, Save, X, Plus, Trash2, Play, Clock, MapPin, Check } from 'lucide-react';
+import BackupCard from './BackupCard';
 import { Member, Schedule as ScheduleType, Hymn } from '../data';
-import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface DashboardProps {
   userRole: string | null;
+  userData?: { uid?: string; name?: string; part?: string } | null;
   onNavigate?: (tab: string) => void;
   onOpenPractice?: (book: string, n: number) => void;
 }
@@ -38,8 +40,11 @@ function parseHymnDate(date: string, fallbackYear: number): Date | null {
   return null;
 }
 
-export default function Dashboard({ userRole, onNavigate, onOpenPractice }: DashboardProps) {
+export default function Dashboard({ userRole, userData, onNavigate, onOpenPractice }: DashboardProps) {
   const isAdmin = userRole === '대장' || userRole === '지휘자' || userRole?.includes('관리자');
+  const isConductor = userRole === '대장' || userRole === '지휘자';
+  const [openingHymns, setOpeningHymns] = useState<{ type: string; date: string; title: string; title2?: string; num?: number; num2?: number }[]>([]);
+  const [checks, setChecks] = useState<{ id: string; uid: string; name?: string }[]>([]);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [adContent, setAdContent] = useState('');
@@ -83,7 +88,12 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
       }
     });
 
+    const unsubOpening = onSnapshot(doc(db, 'settings', 'opening_hymns'), (docSnap) => {
+      setOpeningHymns(docSnap.exists() && Array.isArray(docSnap.data().list) ? docSnap.data().list : []);
+    }, () => {});
+
     return () => {
+      unsubOpening();
       unsubAd();
       unsubSchedules();
       unsubHymns();
@@ -154,6 +164,42 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
   const featuredIdx = upcomingIdx >= 0 ? upcomingIdx : hymnRows.length - 1;
   const featured = featuredIdx >= 0 ? hymnRows[featuredIdx] : null;
 
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const weekKey = featured?.d ? ymd(featured.d) : '';
+  const myUid = userData?.uid;
+
+  // 이번 주일 곡 연습 체크: 대장·지휘자는 전체, 그 외에는 내 기록만 읽습니다
+  useEffect(() => {
+    if (!weekKey || !myUid) { setChecks([]); return; }
+    const q = isConductor
+      ? query(collection(db, 'practice_checks'), where('weekKey', '==', weekKey))
+      : query(collection(db, 'practice_checks'), where('weekKey', '==', weekKey), where('uid', '==', myUid));
+    return onSnapshot(q, snap => setChecks(snap.docs.map(d => ({ id: d.id, ...(d.data() as { uid: string; name?: string }) }))), () => setChecks([]));
+  }, [weekKey, myUid, isConductor]);
+
+  const myCheck = checks.find(c => c.uid === myUid);
+  const toggleCheck = async () => {
+    if (!weekKey || !myUid) return;
+    const ref = doc(db, 'practice_checks', `${weekKey}_${myUid}`);
+    try {
+      if (myCheck) await deleteDoc(ref);
+      else await setDoc(ref, { uid: myUid, name: userData?.name || '', part: userData?.part || '', weekKey, title: featured?.hymn.title || '', at: Date.now() });
+    } catch (e) {
+      console.error(e);
+      alert('저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  // 이번 주일(곡 날짜)의 시작찬송, 없으면 가장 가까운 다음 주일 시작찬송
+  const todayStr = ymd(today);
+  const sundayOpening = (() => {
+    const sundays = openingHymns.filter(h => h.type === 'Sunday' && h.date).sort((a, b) => a.date.localeCompare(b.date));
+    return sundays.find(h => h.date === weekKey) ?? sundays.find(h => h.date >= todayStr) ?? null;
+  })();
+  const openingText = sundayOpening
+    ? [sundayOpening.title && `${sundayOpening.num ? sundayOpening.num + '장 ' : ''}${sundayOpening.title}`, sundayOpening.title2 && `${sundayOpening.num2 ? sundayOpening.num2 + '장 ' : ''}${sundayOpening.title2}`].filter(Boolean).join(' · ')
+    : '';
+
   const openHymn = (h: Hymn) => {
     if (h.book && h.num && onOpenPractice) onOpenPractice(h.book, h.num);
     else onNavigate?.('mp3-player');
@@ -218,13 +264,29 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
                   {featured.d ? `${featured.d.getMonth() + 1}월 ${featured.d.getDate()}일` : ''}
                   {featured.hymn.num ? ` · ${featured.hymn.book === 'grace' ? '은혜찬송가' : '찬송가'} ${featured.hymn.num}장` : ''}
                 </div>
-                <button
-                  onClick={() => openHymn(featured.hymn)}
-                  className="mt-auto self-start md:self-start w-full md:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-white font-bold text-[15px] hover:bg-gray-100 transition-colors"
-                  style={{ color: NAVY }}
-                >
-                  <Play className="w-4 h-4" fill={NAVY} /> 악보 보며 연습하기
-                </button>
+                {openingText && (
+                  <div className="text-xs text-[#E8E2D2] max-w-[85%]">
+                    <span className="font-bold" style={{ color: '#E8C873' }}>시작찬송</span> · {openingText}
+                  </div>
+                )}
+                <div className="mt-auto flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => openHymn(featured.hymn)}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-white font-bold text-[15px] hover:bg-gray-100 transition-colors"
+                    style={{ color: NAVY }}
+                  >
+                    <Play className="w-4 h-4" fill={NAVY} /> 악보 보며 연습하기
+                  </button>
+                  {myUid && (
+                    <button
+                      onClick={toggleCheck}
+                      aria-pressed={!!myCheck}
+                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-5 rounded-xl font-bold text-[15px] border transition-colors ${myCheck ? 'bg-[#C99A2E] border-[#C99A2E] text-[#1B2233]' : 'border-white/60 text-white hover:bg-white/10'}`}
+                    >
+                      <Check className="w-4 h-4" /> {myCheck ? '연습했어요' : '연습 체크'}
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               <>
@@ -419,6 +481,41 @@ export default function Dashboard({ userRole, onNavigate, onOpenPractice }: Dash
           </div>
         </div>
       </div>
+
+      {isConductor && weekKey && (
+        <div className="bg-white rounded-2xl border border-[#E6DFCF] p-5 md:p-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-lg font-bold" style={{ fontFamily: SERIF, color: NAVY }}>이번 주 곡 연습 현황</h2>
+            <span className="text-xs text-gray-500">{featured?.hymn.title}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-3 rounded-md bg-gray-100 overflow-hidden">
+              <div className="h-full" style={{ width: `${totalMembers ? Math.min(100, (checks.length / totalMembers) * 100) : 0}%`, background: GOLD }} />
+            </div>
+            <b className="text-sm">{checks.length} / {totalMembers}명</b>
+          </div>
+          <details className="mt-3 text-sm">
+            <summary className="cursor-pointer font-bold min-h-[36px] flex items-center" style={{ color: NAVY }}>이름 보기</summary>
+            <div className="mt-2 space-y-2">
+              <div>
+                <div className="text-xs font-bold text-gray-500 mb-1">연습함</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {checks.length === 0 && <span className="text-gray-400 text-xs">아직 없습니다.</span>}
+                  {checks.map(c => <span key={c.id} className="px-2 py-1 rounded-full bg-[#FBF3DC] text-[#6B4E0F] text-xs font-medium">{c.name || '이름 없음'}</span>)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-500 mb-1">아직</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {allMembers.filter(m => !checks.some(c => c.uid === m.id)).map(m => <span key={m.id} className="px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs">{m.name}</span>)}
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
+
+      {isConductor && <BackupCard />}
 
       {/* Schedule Management Modal */}
       {isManagingSchedules && (

@@ -19,7 +19,7 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
     const baseMenuOptions = [
         { id: 'dashboard', defaultLabel: '대시보드' },
         { id: 'members', defaultLabel: '인원 관리' },
-        { id: 'opening-hymns', defaultLabel: '시작찬송 관리' },
+        { id: 'opening-hymns', defaultLabel: '시작찬송' },
         { id: 'hymns', defaultLabel: '월별 찬송가' },
         { id: 'schedule', defaultLabel: '연습 스케줄' },
         { id: 'mp3-player', defaultLabel: '찬송가 연습' },

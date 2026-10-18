@@ -3,6 +3,7 @@ import { hymns as initialHymns, Hymn } from '../data';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Smartphone, Monitor } from 'lucide-react';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import OpeningHymnsCompact from './OpeningHymnsCompact';
 import HymnPicker from './HymnPicker';
 
 interface HymnsProps {
@@ -236,9 +237,9 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
           }}
         />
       )}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">월별 찬송가</h1>
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">
+      <div className="flex items-center justify-between flex-wrap gap-x-3 gap-y-3">
+        <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap shrink-0">월별 찬송가</h1>
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end ml-auto">
           <button
             onClick={() => setIsMobileView(!isMobileView)}
             className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shrink-0"
@@ -504,6 +505,8 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
           )
         )}
       </div>
+
+      {!isEditing && <OpeningHymnsCompact month={currentMonth} />}
     </div>
   );
 }

@@ -249,7 +249,7 @@ export default function OpeningHymns({ userRole }: OpeningHymnsProps) {
           <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg">
             <Music className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">시작찬송 관리</h1>
+          <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">시작찬송</h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-end">

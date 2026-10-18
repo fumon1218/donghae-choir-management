@@ -117,6 +117,16 @@ service cloud.firestore {
       allow write: if isConductor();
     }
 
+    // ---------- 6. 이번 주 곡 연습 체크 ----------
+    // 문서 ID = <주일 날짜>_<uid>. 본인 기록만 만들고 지울 수 있고, 읽기는 본인 것 또는 대장·지휘자
+    match /practice_checks/{id} {
+      allow read: if isConductor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update: if isApprovedMember()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.resource.data.weekKey + '_' + request.auth.uid;
+      allow delete: if isConductor() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
     // 그 외 모든 경로는 최고 관리자만
     match /{document=**} {
       allow read, write: if isAdmin();

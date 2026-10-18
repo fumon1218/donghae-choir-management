@@ -3,6 +3,7 @@ import { hymns as initialHymns, Hymn } from '../data';
 import { ChevronLeft, ChevronRight, Music, Edit2, Save, X, Plus, Trash2, Image as ImageIcon, Upload, Loader2, Smartphone, Monitor } from 'lucide-react';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { EmptyArt } from './Decor';
 import OpeningHymnsCompact from './OpeningHymnsCompact';
 import HymnPicker from './HymnPicker';
 
@@ -503,11 +504,7 @@ export default function Hymns({ userRole, onOpenPractice }: HymnsProps) {
             </div>
           ) : (
             <div className="p-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                <Music className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">찬송가 목록이 없습니다</h3>
-              <p className="mt-1 text-gray-500">해당 월의 찬송가 일정이 등록되지 않았습니다.</p>
+              <EmptyArt title="찬송가 목록이 없습니다" hint="해당 월의 찬송가 일정이 등록되지 않았습니다." />
             </div>
           )
         )}

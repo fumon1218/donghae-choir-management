@@ -44,6 +44,9 @@ export interface Hymn {
   title: string;
   composer: string;
   scoreUrl?: string;
+  /** 찬송가 연습 연결: 'hymn'(찬송가) | 'grace'(은혜찬송가) 와 곡 번호 */
+  book?: string;
+  num?: number;
 }
 
 export const hymns: Hymn[] = [];

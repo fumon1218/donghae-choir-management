@@ -21,12 +21,13 @@ import Login from './components/Login';
 import Join from './components/Join';
 import OpeningHymns from './components/OpeningHymns';
 import MemberStatus from './components/MemberStatus';
-import Mp3Player from './components/Mp3Player';
+import HymnPractice, { type PracticeTarget } from './components/HymnPractice';
 import { APP_VERSION } from './version';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [practiceTarget, setPracticeTarget] = useState<PracticeTarget | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
@@ -226,9 +227,9 @@ export default function App() {
       case 'members': return <Members userRole={userRole} userData={userData} />;
       case 'attendance': return <Attendance userData={userData} userRole={userRole} />;
       case 'opening-hymns': return <OpeningHymns userRole={userRole} />;
-      case 'hymns': return <Hymns userRole={userRole} />;
+      case 'hymns': return <Hymns userRole={userRole} onOpenPractice={(book, n) => { setPracticeTarget({ book, n }); setActiveTab('mp3-player'); }} />;
       case 'schedule': return <Schedule userRole={userRole} />;
-      case 'mp3-player': return <Mp3Player />;
+      case 'mp3-player': return <HymnPractice userRole={userRole} target={practiceTarget} onExit={() => { setPracticeTarget(null); setActiveTab('dashboard'); }} />;
       case 'legacy-board': return <LegacyBoard userData={userData} />;
       default:
         if (activeTab.startsWith('board_')) {

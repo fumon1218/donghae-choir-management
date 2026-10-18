@@ -1,2 +1,2 @@
-export const APP_VERSION = 'v1.8.2';
-export const UPDATE_SUMMARY = '악보 보기에 재생·멈춤·속도·파트 선택 추가 (v1.8.2)';
+export const APP_VERSION = 'v1.8.3';
+export const UPDATE_SUMMARY = '찬송가 연습 화면에서 버전 표시가 하단 버튼을 가리던 문제 수정 (v1.8.3)';

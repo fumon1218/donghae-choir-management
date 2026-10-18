@@ -276,9 +276,11 @@ export default function App() {
           </div>
         </main>
 
+        {activeTab !== 'mp3-player' && (
         <div className="fixed bottom-4 right-4 text-[10px] md:text-xs font-bold text-blue-600 bg-white shadow-md border border-blue-100 px-2 py-1 rounded-md pointer-events-none z-[100]">
           {APP_VERSION}
         </div>
+        )}
       </div>
 
       {showBoardManager && (

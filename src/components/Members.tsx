@@ -4,6 +4,7 @@ import { Search, User, UserPlus, Copy, CheckCircle, Trash2, Clock, X, Check, Cam
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
+import DuplicateMembers from './DuplicateMembers';
 
 interface MembersProps {
   userRole: string | null;
@@ -23,6 +24,7 @@ export default function Members({ userRole, userData }: MembersProps) {
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [isManagingRoles, setIsManagingRoles] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
+  const [showDup, setShowDup] = useState(false);
 
   // Load join requests from Firestore
   useEffect(() => {
@@ -306,6 +308,16 @@ export default function Members({ userRole, userData }: MembersProps) {
             >
               <Edit3 className="w-4 h-4" />
               <span className="hidden sm:inline">직분 설정</span>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowDup(true)}
+              className="p-2 bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 transition-colors flex items-center gap-2 text-sm font-medium border border-rose-100 shrink-0"
+              title="중복 회원 정리"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">중복 정리</span>
             </button>
           )}
         </div>
@@ -760,6 +772,7 @@ export default function Members({ userRole, userData }: MembersProps) {
           </div>
         </div>
       )}
+      {showDup && <DuplicateMembers selfId={userData?.uid} onClose={() => setShowDup(false)} />}
     </div >
   );
 }

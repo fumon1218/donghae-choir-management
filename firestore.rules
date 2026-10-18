@@ -2,62 +2,124 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 사용자 데이터 (본인 쓰기 가능, 모두가 읽기 가능 - 통계 및 명단을 위해 리스팅 허용)
-    match /users/{document=**} {
-      allow read: if request.auth != null;
-      // Allow any authenticated user to write (simplified for admin approval)
-      allow write: if request.auth != null;
+
+    // ---------- 도우미 함수 ----------
+
+    // 최고 관리자(박효남님 계정)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "fumon1218@gmail.com";
     }
-    
-    // 공개 데이터
-    match /join_requests/{document=**} {
-      allow read, write: if true;
+
+    function signedIn() {
+      return request.auth != null;
     }
-    match /members/{document=**} {
-      allow read, write: if true;
+
+    function myUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
+
+    // users 문서에 적힌 내 직분 (문서가 없으면 빈 값)
+    function myRole() {
+      return exists(myUserPath()) ? get(myUserPath()).data.get('role', '') : '';
+    }
+
+    // 승인된 찬양대원 (직분이 있고 '대기권한'이 아님)
+    function isApprovedMember() {
+      return signedIn() && myRole() != '' && myRole() != '대기권한';
+    }
+
+    // 대장·지휘자 (찬양대 운영 전반)
+    function isConductor() {
+      return isAdmin() || (signedIn() && myRole() in ['대장', '지휘자']);
+    }
+
+    // 직분 이름이 '...관리자'로 끝나는 담당자 (게시판 관리자, 시작찬송 관리자 등)
+    function isManager() {
+      return signedIn() && myRole().matches('.*관리자');
+    }
+
+    // ---------- 1. 회원(users) ----------
+    match /users/{userId} {
+      allow read: if isAdmin() || isApprovedMember() || (signedIn() && request.auth.uid == userId);
+      // 가입 직후 내 문서는 '대기권한'으로만 만들 수 있음
+      allow create: if isConductor()
+        || (signedIn() && request.auth.uid == userId && request.resource.data.get('role', '') == '대기권한');
+      // 본인은 자기 직분을 바꿀 수 없음 (이름·사진 등만 수정). 직분 변경·승인은 대장·지휘자
+      allow update: if isConductor()
+        || (signedIn() && request.auth.uid == userId
+            && request.resource.data.get('role', '') == resource.data.get('role', ''));
+      // 삭제: 대장·지휘자 또는 본인 탈퇴
+      allow delete: if isConductor() || (signedIn() && request.auth.uid == userId);
+    }
+
+    // ---------- 개인 데이터 (다른 앱: 업무수첩, 플래너, 허브 설정) ----------
+    match /hub_configs/{userId} {
+      allow read, write: if isAdmin() || (signedIn() && request.auth.uid == userId);
+    }
+
+    // ---------- 2. 가입 신청 ----------
+    match /join_requests/{docId} {
+      allow create: if signedIn();
+      allow read: if isConductor() || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
+      allow update, delete: if isConductor();
+    }
+
+    // ---------- 3. 예전 명단 (현재 앱은 users 사용) ----------
+    match /members/{memberId} {
+      allow read: if isAdmin() || isApprovedMember() || (signedIn() && request.auth.uid == memberId);
+      allow write: if isAdmin();
+    }
+
+    // ---------- 4. 찬양대 공용 데이터 ----------
     match /hymns/{document=**} {
-      allow read, write: if true;
-    }
-    match /board_categories/{document=**} {
-      allow read, write: if true;
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor();
     }
     match /boards/{document=**} {
-      allow read, write: if true;
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor();
     }
-    match /board_posts/{document=**} {
-      allow read, write: if true;
+    match /board_categories/{document=**} {
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor();
     }
-    match /settings/{document=**} {
-      allow read, write: if true;
-    }
-    match /attendance/{document=**} {
-      allow read, write: if true;
-    }
-    
 
-    // 찬송가 연습 자료 (저작권 자료): 승인된 로그인 사용자만 읽기, 대장·지휘자만 쓰기
-    function approvedUser() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role != '대기권한';
+    // 게시글·댓글: 대원은 쓰고(본인 이름으로), 수정(댓글·공감)할 수 있고,
+    // 삭제는 작성자 본인 / 대장·지휘자 / 게시판 관리자
+    match /board_posts/{postId} {
+      allow read: if isAdmin() || isApprovedMember();
+      allow create: if isConductor()
+        || (isApprovedMember() && request.resource.data.get('authorUid', '') == request.auth.uid);
+      allow update: if isConductor() || isApprovedMember();
+      allow delete: if isConductor()
+        || (isApprovedMember() && (resource.data.get('authorUid', '') == request.auth.uid
+            || myRole() in ['게시판 관리자', '자유게시판 관리자']));
     }
-    function conductorUser() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['대장', '지휘자'];
+
+    // 설정 문서별로 수정 가능한 직분이 다름
+    match /settings/{docId} {
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor()
+        // 시작찬송·월별 찬송가: 시작찬송 관리자도 수정
+        || (isApprovedMember() && docId in ['hymns_data', 'opening_hymns'] && myRole() == '시작찬송 관리자')
+        // 광고(공지 배너)·연습 스케줄: 각 '관리자' 직분도 수정
+        || (isApprovedMember() && docId in ['advertisement', 'schedules'] && isManager());
     }
+
+    // ---------- 5. 찬송가 연습 자료 (저작권 자료) ----------
+    // 승인된 대원만 읽기, 대장·지휘자만 올리기
     match /hymn_meta/{id} {
-      allow read: if approvedUser();
-      allow write: if conductorUser();
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor();
     }
     match /hymn_songs/{id} {
-      allow read: if approvedUser();
-      allow write: if conductorUser();
+      allow read: if isAdmin() || isApprovedMember();
+      allow write: if isConductor();
     }
 
+    // 그 외 모든 경로는 최고 관리자만
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAdmin();
     }
   }
 }

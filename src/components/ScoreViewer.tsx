@@ -1,6 +1,8 @@
 // Read-only sheet music: draws a Score (the same model the player uses) as engraved-looking SVG.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { durationTicks, pitchToDiatonic, TPQ, type Clef, type Pitch, type Score, type ScoreItem, type ScorePart } from '../harmony/score';
+import { ScorePlayer, buildPlayable } from '../harmony/scorePlayer';
+import type { AudioEngine } from '../harmony/audio';
 
 const SP = 7; // distance between staff lines
 const STAFF_H = SP * 4;
@@ -177,9 +179,63 @@ function Bar({ x, top, bottom, kind }: { x: number; top: number; bottom: number;
   </g>;
 }
 
-export default function ScoreViewer({ score, title, subtitle, onClose, closeLabel = '닫기' }: {
+type PartState = 'on' | 'solo' | 'mute';
+const NEXT: Record<PartState, PartState> = { on: 'solo', solo: 'mute', mute: 'on' };
+const fmtT = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+export default function ScoreViewer({ score, title, subtitle, onClose, closeLabel = '닫기', engine, partNames = [] }: {
   score: Score; title: string; subtitle?: string; onClose: () => void; closeLabel?: string;
+  engine?: AudioEngine; partNames?: string[];
 }) {
+  // ---- playback (own player on the shared audio engine) ----
+  const playable = useMemo(() => buildPlayable(score), [score]);
+  const player = useRef<ScorePlayer | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const [speed, setSpeed] = useState(1);
+  const [states, setStates] = useState<PartState[]>(() => score.parts.map(() => 'on'));
+  const [note, setNote] = useState('');
+  useEffect(() => {
+    if (!engine) return;
+    const p = new ScorePlayer(engine);
+    p.load(playable);
+    p.onEnd = () => { setPlaying(false); setPos(0); };
+    player.current = p;
+    return () => { p.onEnd = null; p.stop(); player.current = null; };
+  }, [engine, playable]);
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => { const p = player.current; if (p) setPos(p.position); }, 200);
+    return () => window.clearInterval(id);
+  }, [playing]);
+  const applyStates = (st: PartState[]) => {
+    const p = player.current; if (!p) return;
+    p.solo = st.findIndex(x => x === 'solo') >= 0 ? st.findIndex(x => x === 'solo') : null;
+    p.muted = new Set(st.flatMap((x, i) => (x === 'mute' ? [i] : [])));
+    p.refresh();
+  };
+  const togglePart = (i: number) => {
+    setStates((prev: PartState[]) => {
+      const n = NEXT[prev[i]];
+      const st = prev.map((x: PartState) => (n === 'solo' && x === 'solo' ? 'on' : x)) as PartState[];
+      st[i] = n;
+      applyStates(st);
+      return st;
+    });
+  };
+  const toggle = async () => {
+    const p = player.current; if (!p) return;
+    if (p.playing) { p.pause(); setPlaying(false); setPos(p.position); return; }
+    setNote('');
+    await p.play(pos >= playable.total - 0.1 ? 0 : pos);
+    setPlaying(p.playing);
+    if (p.blocked) setNote('브라우저가 소리를 막고 있어요. 한 번 더 ▶를 눌러 주세요.');
+  };
+  const stopAll = () => { const p = player.current; if (!p) return; p.stop(); setPlaying(false); setPos(0); };
+  const seek = (v: number) => { const p = player.current; if (!p) return; p.seek(v); setPos(v); };
+  const setSp = (v: number) => { setSpeed(v); const p = player.current; if (p) { p.speed = v; p.refresh(); } };
+  const label = (i: number) => (partNames[i] && partNames[i].trim()) || `${i + 1}번 파트`;
+
   const wrap = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(360);
   const [zoom, setZoom] = useState(1);
@@ -280,8 +336,46 @@ export default function ScoreViewer({ score, title, subtitle, onClose, closeLabe
         <svg width={W * zoom} height={(y + 10) * zoom} viewBox={`0 0 ${W} ${y + 10}`} style={{ display: 'block', background: '#fff', borderRadius: 6, boxShadow: '0 1px 6px rgba(0,0,0,.12)' }}>
           {nodes}
         </svg>
-        <p style={{ textAlign: 'center', fontSize: 11, color: '#999', marginTop: 8 }}>보기 전용 · 재생 중인 음원은 플레이어에서 들을 수 있어요</p>
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#999', marginTop: 8 }}>보기 전용</p>
       </div>
+      {engine && (
+        <div style={{ background: '#fff', borderTop: '1px solid #ddd', padding: '8px 12px calc(8px + env(safe-area-inset-bottom))' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => void toggle()} aria-label={playing ? '멈춤' : '재생'}
+              style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: '#2563eb', color: '#fff', fontSize: 18, cursor: 'pointer' }}>{playing ? '❚❚' : '▶'}</button>
+            <button onClick={stopAll} aria-label="처음으로"
+              style={{ width: 38, height: 38, borderRadius: 19, border: '1px solid #bbb', background: '#fff', fontSize: 14, cursor: 'pointer' }}>■</button>
+            <span style={{ fontSize: 11, color: '#666', width: 34, textAlign: 'right' }}>{fmtT(pos)}</span>
+            <input type="range" min={0} max={Math.max(1, Math.floor(playable.total))} step={1} value={Math.min(pos, playable.total)}
+              onChange={e => seek(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label="재생 위치" />
+            <span style={{ fontSize: 11, color: '#666', width: 34 }}>{fmtT(playable.total)}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#555' }}>속도</span>
+            {[0.7, 0.85, 1].map(v => (
+              <button key={v} onClick={() => setSp(v)}
+                style={{ padding: '3px 9px', borderRadius: 999, border: '1px solid ' + (speed === v ? '#2563eb' : '#ccc'), background: speed === v ? '#2563eb' : '#fff', color: speed === v ? '#fff' : '#333', fontSize: 12, cursor: 'pointer' }}>{v === 1 ? '보통' : `${v}×`}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#555' }}>파트</span>
+            {score.parts.map((_, i) => {
+              const st = states[i] ?? 'on';
+              const style = st === 'solo' ? { background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }
+                : st === 'mute' ? { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', textDecoration: 'line-through' as const }
+                : { background: '#fff', color: '#333', border: '1px solid #ccc' };
+              return (
+                <button key={i} onClick={() => togglePart(i)} style={{ padding: '4px 11px', borderRadius: 999, fontSize: 12, cursor: 'pointer', ...style }}>
+                  {label(i)}{st === 'solo' ? ' 만' : st === 'mute' ? ' 끔' : ''}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 10.5, color: '#999', margin: '6px 0 0' }}>
+            파트 이름을 누를 때마다 <b>내 파트만</b> → <b>끔(나머지만 듣기)</b> → <b>전체</b> 순서로 바뀌어요.{note ? ` ${note}` : ''}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

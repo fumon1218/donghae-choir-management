@@ -19,7 +19,6 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
     const baseMenuOptions = [
         { id: 'dashboard', defaultLabel: '대시보드' },
         { id: 'members', defaultLabel: '인원 관리' },
-        { id: 'attendance', defaultLabel: '출석부' },
         { id: 'opening-hymns', defaultLabel: '시작찬송 관리' },
         { id: 'hymns', defaultLabel: '월별 찬송가' },
         { id: 'schedule', defaultLabel: '연습 스케줄' },
@@ -295,7 +294,7 @@ export default function BoardManager({ onClose }: BoardManagerProps) {
                             <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
                                 <div>
                                     <h3 className="text-base font-semibold text-gray-900">기본 메뉴 이름 및 숨김 설정</h3>
-                                    <p className="text-sm text-gray-500 mt-1">대시보드, 출석부 등 고정된 메뉴들의 이름을 원하는 대로 바꾸거나 숨길 수 있습니다.</p>
+                                    <p className="text-sm text-gray-500 mt-1">대시보드, 인원 관리 등 고정된 메뉴들의 이름을 원하는 대로 바꾸거나 숨길 수 있습니다.</p>
                                 </div>
                                 <button
                                     onClick={handleSaveMenuConfig}
